@@ -116,6 +116,9 @@ public class DatabaseSchema {
 
         @Override
         public boolean equals(Object obj) {
+            if (!(obj instanceof FieldName)) {
+                return false;
+            }
             FieldName other = (FieldName) obj;
             return this.fieldName.equals(other.fieldName);
         }
