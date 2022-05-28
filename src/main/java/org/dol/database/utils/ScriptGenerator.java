@@ -42,7 +42,7 @@ public abstract class ScriptGenerator {
             sbTable.append(joinNames(index.getMemberColumns()));
             sbTable.append(") USING BTREE,\n");
         }
-        return sbTable.substring(0, sbTable.length() - 2) + "\n) ENGINE=InnoDB DEFAULT CHARSET=utf8;\n\n";
+        return sbTable.substring(0, sbTable.length() - 2) + "\n) ENGINE=InnoDB;\n\n";
     }
 
     private static String columnDef(ColumnSchema column) {
@@ -53,10 +53,18 @@ public abstract class ScriptGenerator {
             sbTable.append(" NOT NULL");
         }
         if (Utils.hasLength(column.getDefaultValue())) {
-            sbTable.append(" DEFAULT ").append(column.getDefaultValue());
+            if (column.isStringColumn()) {
+                String defaultValue = column.getDefaultValue();
+                defaultValue = defaultValue.replaceAll("'", "''");
+                sbTable.append(" DEFAULT '").append(defaultValue).append("'");
+            } else {
+                sbTable.append(" DEFAULT ").append(column.getDefaultValue());
+            }
+
         }
         if (Utils.hasLength(column.getRemarks())) {
-            sbTable.append(" COMMENT '").append(column.getRemarks()).append("'");
+            String remarks = column.getRemarks().replaceAll("'", "''");
+            sbTable.append(" COMMENT '").append(remarks).append("'");
         }
         return sbTable.append(",\n").toString();
     }
