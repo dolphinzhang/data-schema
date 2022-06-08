@@ -117,13 +117,13 @@ public abstract class ScriptGenerator {
         return sb.toString();
     }
 
-    public static String generateModifySQL(DatabaseSchema fromDB, DatabaseSchema toDB) {
+    public static String generateModifySQL(DatabaseSchema fromDB, DatabaseSchema toDB, boolean includeNewTable) {
         StringBuilder updateScript = new StringBuilder();
         Collection<TableSchema> fromTables = fromDB.getTables();
         Collection<TableSchema> toTables = toDB.getTables();
         for (TableSchema fromTable : fromTables) {
             TableSchema toTable = toTables.stream().filter(ot -> sameTable(ot, fromTable)).findFirst().orElse(null);
-            String tableScript = tableChangeScript(fromTable, toTable);
+            String tableScript = tableChangeScript(fromTable, toTable,includeNewTable);
             if (Utils.hasText(tableScript)) {
                 updateScript.append(tableScript).append("\n\n");
             }
@@ -131,9 +131,9 @@ public abstract class ScriptGenerator {
         return updateScript.toString();
     }
 
-    private static String tableChangeScript(TableSchema fromTable, TableSchema toTable) {
+    private static String tableChangeScript(TableSchema fromTable, TableSchema toTable, boolean includeNewTable) {
         if (toTable == null) {
-            return tableDDL(fromTable);
+            return includeNewTable ? tableDDL(fromTable) : null;
         } else {
             StringBuilder sbAlterTableScript = new StringBuilder();
             List<ColumnSchema> fromColumns = fromTable.getColumns();

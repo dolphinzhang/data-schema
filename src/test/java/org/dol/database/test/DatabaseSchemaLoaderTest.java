@@ -31,23 +31,30 @@ public class DatabaseSchemaLoaderTest {
     public void test2() {
         DatabaseSchema fromDB = DatabaseSchemaLoader.load(
                 "com.mysql.cj.jdbc.Driver",
-                "jdbc:mysql://10.12.22.73:3306/producer_pro?useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull&allowMultiQueries=true&useSSL=false",
+                "jdbc:mysql://10.12.22.73:3306/tvu_drive?useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull&allowMultiQueries=true&useSSL=false",
                 "root",
                 "tvu1p2ack3",
                 "t_"
         );
-        DatabaseSchema toDB = DatabaseSchemaLoader.load(
+        /*DatabaseSchema toDB = DatabaseSchemaLoader.load(
                 "com.mysql.cj.jdbc.Driver",
                 "jdbc:mysql://localhost:3306/test?useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull&allowMultiQueries=true&useSSL=false",
                 "root",
                 "9cefB9pT1nTVHg9c",
                 "t_"
-        );
+        );*/
+
        /* for (TableSchema ta : databaseSchema.getTables()) {
             System.out.println(ta.getModelName());
         }*/
-
-        String generate = ScriptGenerator.generateModifySQL(fromDB, toDB);
+        DatabaseSchema toDB = DatabaseSchemaLoader.load(
+                "com.mysql.cj.jdbc.Driver",
+                "jdbc:mysql://10.12.22.73:3306/tvu_drive-prd-20220524?useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull&allowMultiQueries=true&useSSL=false",
+                "root",
+                "tvu1p2ack3",
+                "t_"
+        );
+        String generate = ScriptGenerator.generateModifySQL(fromDB, toDB,false);
         System.out.println(generate);
 
     }
