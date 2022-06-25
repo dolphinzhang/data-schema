@@ -242,13 +242,18 @@ public class DatabaseSchemaLoader {
     }
 
     @SneakyThrows
-    public static DatabaseSchema load(Connection connection, String tablePrefix) {
-        DatabaseSchema databaseSchema = databaseSchemaMap.get(connection.getSchema());
+    public static DatabaseSchema load(Connection connection, String schema, String tablePrefix) {
+        DatabaseSchema databaseSchema = databaseSchemaMap.get(schema);
         if (databaseSchema == null) {
             databaseSchema = doLoad(connection, tablePrefix);
-            databaseSchemaMap.put(connection.getSchema(), databaseSchema);
+            databaseSchemaMap.put(schema, databaseSchema);
         }
         return databaseSchema;
+    }
+
+    @SneakyThrows
+    public static DatabaseSchema load(Connection connection, String tablePrefix) {
+        return load(connection, connection.getSchema(), tablePrefix);
     }
 
     /**

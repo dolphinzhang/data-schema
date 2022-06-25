@@ -49,12 +49,12 @@ public class DatabaseSchemaLoaderTest {
         }*/
         DatabaseSchema toDB = DatabaseSchemaLoader.load(
                 "com.mysql.cj.jdbc.Driver",
-                "jdbc:mysql://10.12.22.73:3306/tvu_drive-prd-20220524?useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull&allowMultiQueries=true&useSSL=false",
+                "jdbc:mysql://10.12.22.73:3306/tvu_drive_prd_20220624?useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull&allowMultiQueries=true&useSSL=false",
                 "root",
                 "tvu1p2ack3",
                 "t_"
         );
-        String generate = ScriptGenerator.generateModifySQL(fromDB, toDB,false);
+        String generate = ScriptGenerator.generateModifySQL(fromDB, toDB,true);
         System.out.println(generate);
 
     }
