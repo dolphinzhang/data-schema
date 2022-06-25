@@ -2,14 +2,7 @@ package org.dol.database.schema;
 
 import java.util.List;
 
-// TODO: Auto-generated Javadoc
 
-/**
- * 主键Schema.
- *
- * @author dolphin
- * @date 2017年2月20日 下午4:14:13
- */
 public class KeySchema {
 
     /**

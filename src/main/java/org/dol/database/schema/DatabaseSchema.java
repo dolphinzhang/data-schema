@@ -6,14 +6,6 @@ import lombok.Data;
 
 import java.util.*;
 
-// TODO: Auto-generated Javadoc
-
-/**
- * 数据库Schema.
- *
- * @author dolphin
- * @date 2017年2月20日 下午4:13:20
- */
 public class DatabaseSchema {
 
     /**

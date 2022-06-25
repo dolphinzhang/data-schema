@@ -3,14 +3,7 @@ package org.dol.database.schema;
 import java.util.HashMap;
 import java.util.Map;
 
-// TODO: Auto-generated Javadoc
 
-/**
- * 数据类型枚举.
- *
- * @author dolphin
- * @date 2017年2月20日 下午4:10:51
- */
 public enum DataTypeEnum {
 
     /**
@@ -102,27 +95,27 @@ public enum DataTypeEnum {
     /**
      * The date.
      */
-    DATE("DATE", 91, "DATE", "Date", "DateTime","java.util.Date"),
+    DATE("DATE", 91, "DATE", "Date", "DateTime", "java.util.Date"),
 
     /**
      * The datetime.
      */
-    DATETIME("DATETIME", 93, "TIMESTAMP", "Date","DateTime", "java.util.Date"),
+    DATETIME("DATETIME", 93, "TIMESTAMP", "Date", "DateTime", "java.util.Date"),
 
     /**
      * The time.
      */
-    TIME("TIME", 92, "VARCHAR", "String", "string","java.lang.String"),
+    TIME("TIME", 92, "VARCHAR", "String", "string", "java.lang.String"),
 
     /**
      * The year.
      */
-    YEAR("YEAR", 91, "VARCHAR", "String", "string","java.lang.String"),
+    YEAR("YEAR", 91, "VARCHAR", "String", "string", "java.lang.String"),
 
     /**
      * The timestamp.
      */
-    TIMESTAMP("TIMESTAMP", 93, "TIMESTAMP", "Date","DateTime", "java.util.Date"),
+    TIMESTAMP("TIMESTAMP", 93, "TIMESTAMP", "Date", "DateTime", "java.util.Date"),
 
     /**
      * The tinyblob.
@@ -132,7 +125,7 @@ public enum DataTypeEnum {
     /**
      * The blob.
      */
-    BLOB("BLOB", -4, "BLOB", "byte[]", "byte[]","java.lang.Byte"),
+    BLOB("BLOB", -4, "BLOB", "byte[]", "byte[]", "java.lang.Byte"),
 
     /**
      * The mediumblob.
@@ -142,24 +135,25 @@ public enum DataTypeEnum {
     /**
      * The longblob.
      */
-    LONGBLOB("LONGBLOB", -4, "BLOB", "byte[]","byte[]", "java.lang.Byte"),
+    LONGBLOB("LONGBLOB", -4, "BLOB", "byte[]", "byte[]", "java.lang.Byte"),
 
     /**
      * The binary.
      */
-    BINARY("BINARY", -2, "BINARY", "byte[]", "byte[]","java.lang.Byte"),
+    BINARY("BINARY", -2, "BINARY", "byte[]", "byte[]", "java.lang.Byte"),
 
     /**
      * The varbinary.
      */
-    VARBINARY("VARBINARY", -3, "VARBINARY", "byte[]","byte[]", "java.lang.Byte"),
+    VARBINARY("VARBINARY", -3, "VARBINARY", "byte[]", "byte[]", "java.lang.Byte"),
 
-    BOOLEAN("BOOLEAN", 4, "BOOLEAN", "Boolean", "bool","java.lang.Boolean"),
+    BOOLEAN("BOOLEAN", 4, "BOOLEAN", "Boolean", "bool", "java.lang.Boolean"),
 
     /**
      * The bit.
      */
-    BIT("BIT", -7, "BIT", "Boolean", "bool","java.lang.Boolean"),;
+    BIT("BIT", -7, "BIT", "Boolean", "bool", "java.lang.Boolean"),
+    ;
     // TEXT(0, "VARCHAR", "String", "java.lang.String"),
 
     /**
@@ -181,7 +175,7 @@ public enum DataTypeEnum {
     /**
      * The data type.
      */
-    private int dataType;
+    private int    dataType;
     /**
      * The jdbc type.
      */
@@ -300,10 +294,6 @@ public enum DataTypeEnum {
         return javaType;
     }
 
-    public String getCsType() {
-        return csType;
-    }
-
     /**
      * Sets the java type.
      *
@@ -311,6 +301,10 @@ public enum DataTypeEnum {
      */
     public void setJavaType(String javaType) {
         this.javaType = javaType;
+    }
+
+    public String getCsType() {
+        return csType;
     }
 
     /**

@@ -5,12 +5,7 @@ import org.dol.database.utils.Utils;
 
 import java.util.regex.Matcher;
 
-/**
- * 数据库字段.
- *
- * @author dolphin
- * @date 2017年2月20日 下午4:08:20
- */
+
 public class ColumnSchema {
 
     /**
