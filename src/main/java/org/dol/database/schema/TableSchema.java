@@ -6,12 +6,7 @@ import org.dol.database.utils.Utils;
 import java.util.List;
 import java.util.regex.Matcher;
 
-/**
- * 表Schema.
- *
- * @author dolphin
- * @date 2017年2月20日 下午4:14:25
- */
+
 public class TableSchema {
 
     private final String             prefix;
