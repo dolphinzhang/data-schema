@@ -128,8 +128,12 @@ public class DatabaseSchemaLoader {
      */
     private static List<ColumnSchema> getColumns(Connection connection, TableSchema tableSchema) throws SQLException {
         final DatabaseMetaData databaseMetaData = connection.getMetaData();
+
         final ResultSet rs = databaseMetaData.getColumns(tableSchema.getTableCatalog(), null, tableSchema.getTableName(), "%");
         final List<ColumnSchema> columnSchemas = new ArrayList<>();
+
+        Map<String, Map<String, Object>> columns = getColumnDefFromDB(connection, tableSchema);
+
         while (rs.next()) {
             // String tableCat = rs.getString("TABLE_CAT");// 表目录（可能为空）
             // String tableSchemaName = rs.getString("TABLE_SCHEM");//
@@ -170,9 +174,57 @@ public class DatabaseSchemaLoader {
             if (type_name != null && type_name.contains("UNSIGNED")) {
                 columnSchema.setUnsigned(true);
             }
+            if (!columns.isEmpty()) {
+                Map<String, Object> column = columns.get(columnName);
+                String characterSet = (String) column.get("CHARACTER_SET_NAME");
+                String collation = (String) column.get("COLLATION_NAME");
+                columnSchema.setCharacterSet(characterSet);
+                columnSchema.setCollation(collation);
+            }
             columnSchemas.add(columnSchema);
         }
         return columnSchemas;
+    }
+
+    private static Map<String, Map<String, Object>> getTableDefFromDB(Connection connection) throws SQLException {
+        Map<String, Map<String, Object>> tableDef = new HashMap<>();
+        try {
+            String sql = "SELECT * from information_schema.`TABLES` s  where s.table_schema=? ";
+            PreparedStatement preparedStatement = connection.prepareStatement(sql);
+            preparedStatement.setString(1, connection.getCatalog());
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                Map<String, Object> table = new HashMap<>();
+                table.put("TABLE_COLLATION", resultSet.getString("TABLE_COLLATION"));
+                tableDef.put(resultSet.getString("TABLE_NAME"), table);
+            }
+            return tableDef;
+        } catch (Exception ignore) {
+
+        }
+        return tableDef;
+    }
+
+    private static Map<String, Map<String, Object>> getColumnDefFromDB(Connection connection,
+                                                                       TableSchema tableSchema) throws SQLException {
+        Map<String, Map<String, Object>> columns = new HashMap<>();
+        try {
+            String sql = "SELECT COLUMN_NAME,CHARACTER_SET_NAME,COLLATION_NAME from information_schema.COLUMNS s where s.table_schema=? and s.TABLE_NAME=?";
+            PreparedStatement preparedStatement = connection.prepareStatement(sql);
+            preparedStatement.setString(1, tableSchema.getTableCatalog());
+            preparedStatement.setString(2, tableSchema.getTableName());
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                Map<String, Object> column = new HashMap<>();
+                column.put("CHARACTER_SET_NAME", resultSet.getString("CHARACTER_SET_NAME"));
+                column.put("COLLATION_NAME", resultSet.getString("COLLATION_NAME"));
+                columns.put(resultSet.getString("COLUMN_NAME"), column);
+            }
+            return columns;
+        } catch (Exception ignore) {
+
+        }
+        return columns;
     }
 
     @SneakyThrows
@@ -251,6 +303,7 @@ public class DatabaseSchemaLoader {
         final String[] types = {"table", "view"};
         final ResultSet rs = databaseMetaData.getTables(connection.getCatalog(), "dbo", null, types);
         final List<TableSchema> tableSchemas = new ArrayList<>();
+        Map<String, Map<String, Object>> tables = getTableDefFromDB(connection);
         while (rs.next()) {
             final TableSchema tableSchema = new TableSchema(tablePrefix);
             tableSchema.setTableCatalog(rs.getString("TABLE_CAT"));
@@ -261,6 +314,11 @@ public class DatabaseSchemaLoader {
             tableSchema.setIndexes(getIndexes(connection, tableSchema));
             tableSchema.setPrimaryKey(getPrimaryKey(connection, tableSchema));
             tableSchema.setView(rs.getString(4).equals("VIEW"));
+            if (tableSchema.isTable() && !tables.isEmpty()) {
+                Map<String, Object> stringObjectMap = tables.get(tableSchema.getTableName());
+                String table_collation = (String) stringObjectMap.get("TABLE_COLLATION");
+                tableSchema.setCollation(table_collation);
+            }
             tableSchemas.add(tableSchema);
         }
         setComments(connection, tableSchemas);

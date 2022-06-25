@@ -114,6 +114,25 @@ public class ColumnSchema {
     private Boolean      isDeletedColumn = false;
     private String       csPropertyName;
 
+    public String getCharacterSet() {
+        return characterSet;
+    }
+
+    public void setCharacterSet(String characterSet) {
+        this.characterSet = characterSet;
+    }
+
+    public String getCollation() {
+        return collation;
+    }
+
+    public void setCollation(String collation) {
+        this.collation = collation;
+    }
+
+    private String characterSet;
+    private String collation;
+
     public Boolean getUnsigned() {
         return unsigned;
     }

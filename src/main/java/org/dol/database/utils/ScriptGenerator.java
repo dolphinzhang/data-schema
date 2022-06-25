@@ -11,8 +11,12 @@ public abstract class ScriptGenerator {
     public static String generate(DatabaseSchema databaseSchema) {
         StringBuilder sbDB = new StringBuilder();
         for (TableSchema table : databaseSchema.getTables()) {
-            String tableScript = tableDDL(table);
-            sbDB.append(tableScript);
+            try {
+                String tableScript = tableDDL(table);
+                sbDB.append(tableScript);
+            } catch (Exception exception) {
+                exception.printStackTrace();
+            }
         }
         return sbDB.toString();
     }
@@ -21,10 +25,10 @@ public abstract class ScriptGenerator {
         StringBuilder sbTable = new StringBuilder();
         sbTable.append("CREATE TABLE `").append(table.getTableName()).append("` (\n");
         for (ColumnSchema column : table.getColumns()) {
-            sbTable.append(columnDef(column));
+            sbTable.append(columnDef(table, column));
         }
         KeySchema primaryKey = table.getPrimaryKey();
-        if (primaryKey != null) {
+        if (primaryKey != null && Utils.notEmpty(primaryKey.getMemberColumns())) {
             sbTable.append("  PRIMARY KEY (");
             sbTable.append(joinNames(primaryKey.getMemberColumns()));
             sbTable.append("),\n");
@@ -45,13 +49,17 @@ public abstract class ScriptGenerator {
         return sbTable.substring(0, sbTable.length() - 2) + "\n) ENGINE=InnoDB;\n\n";
     }
 
-    private static String columnDef(ColumnSchema column) {
+    private static String columnDef(TableSchema table, ColumnSchema column) {
         StringBuilder sbTable = new StringBuilder();
         sbTable.append("  `").append(column.getColumnName()).append("` ");
         appendType(sbTable, column);
+        if (Utils.hasText(column.getCollation()) && !column.getCollation().equalsIgnoreCase(table.getCollation())) {
+            sbTable.append(" COLLATE ").append(column.getCollation());
+        }
         if (column.isNotNull()) {
             sbTable.append(" NOT NULL");
         }
+
         if (Utils.hasLength(column.getDefaultValue())) {
             if (column.isStringColumn()) {
                 String defaultValue = column.getDefaultValue();
@@ -123,7 +131,7 @@ public abstract class ScriptGenerator {
         Collection<TableSchema> toTables = toDB.getTables();
         for (TableSchema fromTable : fromTables) {
             TableSchema toTable = toTables.stream().filter(ot -> sameTable(ot, fromTable)).findFirst().orElse(null);
-            String tableScript = tableChangeScript(fromTable, toTable,includeNewTable);
+            String tableScript = tableChangeScript(fromTable, toTable, includeNewTable);
             if (Utils.hasText(tableScript)) {
                 updateScript.append(tableScript).append("\n\n");
             }
@@ -142,11 +150,11 @@ public abstract class ScriptGenerator {
                 ColumnSchema toColumn = toColumns.stream()
                         .filter(col -> col.getColumnName().equalsIgnoreCase(fromColumn.getColumnName()))
                         .findFirst().orElse(null);
-                String fromColumnDef = columnDef(fromColumn);
+                String fromColumnDef = columnDef(fromTable, fromColumn);
                 if (toColumn == null) {
                     sbAlterTableScript.append("ADD COLUMN ").append(fromColumnDef);
                 } else {
-                    String toColumnDef = columnDef(toColumn);
+                    String toColumnDef = columnDef(toTable, toColumn);
                     if (!fromColumnDef.equalsIgnoreCase(toColumnDef)) {
                         sbAlterTableScript.append("MODIFY COLUMN ").append(fromColumnDef);
                     }

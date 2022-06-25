@@ -54,9 +54,18 @@ public class TableSchema {
     private       ColumnSchema       deletedColumn;
     private       ColumnSchema       remarkColumn;
     private       String             nameWithoutPrefix;
+    private String collation;
 
     public TableSchema(String prefix) {
         this.prefix = prefix;
+    }
+
+    public String getCollation() {
+        return collation;
+    }
+
+    public void setCollation(String collation) {
+        this.collation = collation;
     }
 
     public String getPrefix() {
