@@ -53,7 +53,10 @@ public abstract class ScriptGenerator {
         StringBuilder sbTable = new StringBuilder();
         sbTable.append("  `").append(column.getColumnName()).append("` ");
         appendType(sbTable, column);
-        if (Utils.hasText(column.getCollation()) && !column.getCollation().equalsIgnoreCase(table.getCollation())) {
+
+        if (Utils.hasText(table.getCollation())
+                && Utils.hasText(column.getCollation())
+                && !column.getCollation().equalsIgnoreCase(table.getCollation())) {
             sbTable.append(" COLLATE ").append(column.getCollation());
         }
         if (column.isNotNull()) {
@@ -125,11 +128,17 @@ public abstract class ScriptGenerator {
         return sb.toString();
     }
 
-    public static String generateModifySQL(DatabaseSchema fromDB, DatabaseSchema toDB, boolean includeNewTable) {
+    public static String generateModifySQL(DatabaseSchema fromDB,
+                                           DatabaseSchema toDB,
+                                           boolean includeNewTable,
+                                           String... ignoreTables) {
         StringBuilder updateScript = new StringBuilder();
         Collection<TableSchema> fromTables = fromDB.getTables();
         Collection<TableSchema> toTables = toDB.getTables();
         for (TableSchema fromTable : fromTables) {
+            if (ignoreTables.length > 0 && shouldIgnore(fromTable, ignoreTables)) {
+                continue;
+            }
             TableSchema toTable = toTables.stream().filter(ot -> sameTable(ot, fromTable)).findFirst().orElse(null);
             String tableScript = tableChangeScript(fromTable, toTable, includeNewTable);
             if (Utils.hasText(tableScript)) {
@@ -137,6 +146,23 @@ public abstract class ScriptGenerator {
             }
         }
         return updateScript.toString();
+    }
+
+    private static boolean shouldIgnore(TableSchema fromTable, String[] ignoreTables) {
+        String lowerTableName = fromTable.getTableName().toLowerCase();
+        for (String ignoreTable : ignoreTables) {
+            ignoreTable = ignoreTable.toLowerCase();
+            if (ignoreTable.equals(lowerTableName)) {
+                return true;
+            }
+            if (ignoreTable.contains("*")) {
+                ignoreTable = ignoreTable.replaceAll("\\*", "");
+                if (lowerTableName.contains(ignoreTable)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private static String tableChangeScript(TableSchema fromTable, TableSchema toTable, boolean includeNewTable) {
