@@ -48,8 +48,6 @@ public class DatabaseSchema {
     /**
      * 参照方法名.
      *
-     * @param tables
-     * @return
      */
     public Collection<TableSchema> getTables(String[] tables) {
         if (tables == null || tables.length == 0) {

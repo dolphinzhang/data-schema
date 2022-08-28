@@ -44,9 +44,8 @@ public class DatabaseSchemaLoader {
      *
      * @param tableSchema the table schema
      * @return the indexes
-     * @throws SQLException the SQL exception
      */
-    private static List<IndexSchema> getIndexes(Connection connection, TableSchema tableSchema) throws SQLException {
+    private static List<IndexSchema> getIndexes(Connection connection, TableSchema tableSchema) {
         try {
             final DatabaseMetaData databaseMetaData = connection.getMetaData();
             final ResultSet rs = databaseMetaData.getIndexInfo(
@@ -197,7 +196,7 @@ public class DatabaseSchemaLoader {
         return columnSchemas;
     }
 
-    private static Map<String, Map<String, Object>> getTableDefFromDB(Connection connection) throws SQLException {
+    private static Map<String, Map<String, Object>> getTableDefFromDB(Connection connection) {
         Map<String, Map<String, Object>> tableDef = new HashMap<>();
         try {
             String sql = "SELECT * from information_schema.`TABLES` s  where s.table_schema=? ";
@@ -217,7 +216,7 @@ public class DatabaseSchemaLoader {
     }
 
     private static Map<String, Map<String, Object>> getColumnDefFromDB(Connection connection,
-                                                                       TableSchema tableSchema) throws SQLException {
+                                                                       TableSchema tableSchema) {
         Map<String, Map<String, Object>> columns = new HashMap<>();
         try {
             String sql = "SELECT COLUMN_NAME,CHARACTER_SET_NAME,COLLATION_NAME from information_schema.COLUMNS s where s.table_schema=? and s.TABLE_NAME=?";

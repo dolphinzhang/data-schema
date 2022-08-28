@@ -1,6 +1,5 @@
 package org.dol.database.test;
 
-import com.alibaba.fastjson.JSON;
 import org.dol.database.schema.DatabaseSchema;
 import org.dol.database.schema.DatabaseSchemaLoader;
 import org.dol.database.utils.ScriptGenerator;

@@ -77,9 +77,7 @@ public class Utils {
             preIsDigit = isDigit;
             preIsUpperCase = isUpperCase;
         }
-        if (pre < name.length()) {
-            parts.add(name.substring(pre));
-        }
+        parts.add(name.substring(pre));
         return parts;
     }
 
