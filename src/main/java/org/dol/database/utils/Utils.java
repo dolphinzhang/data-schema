@@ -310,7 +310,7 @@ public class Utils {
             }
             sb.append(value).append(c);
         }
-        return sb.length() == 0 ? "" : sb.toString().substring(0, sb.length() - 1);
+        return sb.length() == 0 ? "" : sb.substring(0, sb.length() - 1);
     }
 
 

@@ -19,9 +19,9 @@ public class DatabaseSchemaLoaderTest {
         );
 
 
-        String s = JSON.toJSONString(databaseSchema);
+        //String s = JSON.toJSONString(databaseSchema);
 
-        databaseSchema = JSON.parseObject(s, DatabaseSchema.class);
+       // databaseSchema = JSON.parseObject(s, DatabaseSchema.class);
        /* for (TableSchema ta : databaseSchema.getTables()) {
             System.out.println(ta.getModelName());
         }*/

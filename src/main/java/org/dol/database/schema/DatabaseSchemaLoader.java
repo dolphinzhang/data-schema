@@ -2,13 +2,14 @@ package org.dol.database.schema;
 
 
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.dol.database.utils.Utils;
 
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.*;
 
-
+@Slf4j
 public class DatabaseSchemaLoader {
 
     private static final String EMPTY_STRING = "";
@@ -46,18 +47,29 @@ public class DatabaseSchemaLoader {
      * @throws SQLException the SQL exception
      */
     private static List<IndexSchema> getIndexes(Connection connection, TableSchema tableSchema) throws SQLException {
-        final DatabaseMetaData databaseMetaData = connection.getMetaData();
-        final ResultSet rs = databaseMetaData.getIndexInfo(null, null, tableSchema.getTableName(), false, false);
+        try {
+            final DatabaseMetaData databaseMetaData = connection.getMetaData();
+            final ResultSet rs = databaseMetaData.getIndexInfo(
+                    connection.getCatalog(),
+                    connection.getSchema(),
+                    tableSchema.getTableName(),
+                    false,
+                    false);
 
-        final List<IndexSchema> indexSchemas = new ArrayList<>();
-        final Map<String, IndexSchema> indexColumns = new HashMap<>();
-        // List<ColumnSchema> memberColumns = new ArrayList<ColumnSchema>();
-        // keySchema.setMemberColumns(memberColumns);
-        addIndex(tableSchema, rs, indexColumns, indexSchemas);
-        // rs = databaseMetaData.getIndexInfo(tableSchema.getTableCatalog(),
-        // null, tableSchema.getTableName(), false, true);
-        // addIndex(tableSchema, rs, indexColumns, indexSchemas);
-        return indexSchemas;
+            final List<IndexSchema> indexSchemas = new ArrayList<>();
+            final Map<String, IndexSchema> indexColumns = new HashMap<>();
+            // List<ColumnSchema> memberColumns = new ArrayList<ColumnSchema>();
+            // keySchema.setMemberColumns(memberColumns);
+            addIndex(tableSchema, rs, indexColumns, indexSchemas);
+            // rs = databaseMetaData.getIndexInfo(tableSchema.getTableCatalog(),
+            // null, tableSchema.getTableName(), false, true);
+            // addIndex(tableSchema, rs, indexColumns, indexSchemas);
+            return indexSchemas;
+        } catch (Exception ex) {
+            log.error("get table indexes fail", ex);
+            return Collections.emptyList();
+        }
+
     }
 
     /**
@@ -110,9 +122,8 @@ public class DatabaseSchemaLoader {
                 connection.close();
             }
         } catch (final Exception e) {
-            // TODO: handle exception
+            log.error("close connection", e);
         }
-
     }
 
     /**
@@ -127,7 +138,9 @@ public class DatabaseSchemaLoader {
                                                  boolean loadFromDb) throws SQLException {
         final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
-        final ResultSet rs = databaseMetaData.getColumns(tableSchema.getTableCatalog(), null, tableSchema.getTableName(), "%");
+        final ResultSet rs = databaseMetaData.getColumns(tableSchema.getTableCatalog(),
+                connection.getSchema(),
+                tableSchema.getTableName(), "%");
         final List<ColumnSchema> columnSchemas = new ArrayList<>();
 
         Map<String, Map<String, Object>> columns = loadFromDb ? getColumnDefFromDB(connection, tableSchema) : Collections.emptyMap();
@@ -265,7 +278,7 @@ public class DatabaseSchemaLoader {
      */
     private static KeySchema getPrimaryKey(Connection connection, TableSchema tableSchema) throws Exception {
         final DatabaseMetaData databaseMetaData = connection.getMetaData();
-        final ResultSet rs = databaseMetaData.getPrimaryKeys(tableSchema.getTableCatalog(), null, tableSchema.getTableName());
+        final ResultSet rs = databaseMetaData.getPrimaryKeys(tableSchema.getTableCatalog(), connection.getSchema(), tableSchema.getTableName());
         final KeySchema keySchema = new KeySchema();
         final List<ColumnSchema> memberColumns = new ArrayList<>();
         keySchema.setMemberColumns(memberColumns);
@@ -309,7 +322,7 @@ public class DatabaseSchemaLoader {
         final DatabaseMetaData databaseMetaData = connection.getMetaData();
         databaseMetaData.getSchemaTerm();
         final String[] types = {"table", "view"};
-        final ResultSet rs = databaseMetaData.getTables(connection.getCatalog(), "dbo", null, types);
+        final ResultSet rs = databaseMetaData.getTables(connection.getCatalog(), connection.getSchema(), null, types);
         final List<TableSchema> tableSchemas = new ArrayList<>();
         Map<String, Map<String, Object>> tables = loadFromDb ? getTableDefFromDB(connection) : Collections.emptyMap();
         while (rs.next()) {

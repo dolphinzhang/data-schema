@@ -788,7 +788,7 @@ public class ColumnSchema {
         if (isDeletedColumn == null) {
             isDeletedColumn = SchemaConstraints.DELETED_COLUMN.contains(this.columnName.toUpperCase());
         }
-        return isDeletedColumn == null ? false : isDeletedColumn;
+        return isDeletedColumn != null && isDeletedColumn;
     }
 
     public boolean isVersionColumn() {
@@ -956,7 +956,7 @@ public class ColumnSchema {
                 }
             }
         }
-        return isStatusColumn == null ? false : isStatusColumn;
+        return isStatusColumn != null && isStatusColumn;
     }
 
     /**
