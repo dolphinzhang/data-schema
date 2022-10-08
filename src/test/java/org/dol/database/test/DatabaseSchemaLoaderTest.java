@@ -20,7 +20,7 @@ public class DatabaseSchemaLoaderTest {
 
         //String s = JSON.toJSONString(databaseSchema);
 
-       // databaseSchema = JSON.parseObject(s, DatabaseSchema.class);
+        // databaseSchema = JSON.parseObject(s, DatabaseSchema.class);
        /* for (TableSchema ta : databaseSchema.getTables()) {
             System.out.println(ta.getModelName());
         }*/
@@ -28,6 +28,22 @@ public class DatabaseSchemaLoaderTest {
         String generate = ScriptGenerator.generate(databaseSchema);
         System.out.println(generate);
 
+    }
+
+    @Test
+    public void test3() {
+        DatabaseSchema databaseSchema = DatabaseSchemaLoader.load(
+                "com.mysql.cj.jdbc.Driver",
+                "jdbc:mysql://10.12.22.73:3306/producer_pro?useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull&allowMultiQueries=true&useSSL=false",
+                "root",
+                "tvu1p2ack3",
+                null,
+                "tvu-drive",
+                "t_",
+                false
+        );
+        String generate = ScriptGenerator.generate(databaseSchema);
+        System.out.println(generate);
     }
 
     @Test
