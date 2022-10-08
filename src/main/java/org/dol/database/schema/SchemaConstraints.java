@@ -55,6 +55,6 @@ public abstract class SchemaConstraints {
      */
     public static final List<String> STATUS_COLUMN = Arrays.asList("STATUS", "STAT");
 
-    public static final Pattern SYMBOL_PATTERN = Pattern.compile("[\\,，\\.。\\:：;；\\s\\-—]");
+    public static final Pattern SYMBOL_PATTERN = Pattern.compile("[,，.。:：;；\\s\\-—]");
 
 }

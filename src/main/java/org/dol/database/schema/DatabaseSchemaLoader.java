@@ -2,16 +2,14 @@ package org.dol.database.schema;
 
 
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.dol.database.utils.Utils;
 
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-
+@Slf4j
 public class DatabaseSchemaLoader {
 
     private static final String                      EMPTY_STRING      = "";
@@ -47,21 +45,31 @@ public class DatabaseSchemaLoader {
      *
      * @param tableSchema the table schema
      * @return the indexes
-     * @throws SQLException the SQL exception
      */
-    private static List<IndexSchema> getIndexes(Connection connection, TableSchema tableSchema) throws SQLException {
-        final DatabaseMetaData databaseMetaData = connection.getMetaData();
-        final ResultSet rs = databaseMetaData.getIndexInfo(null, null, tableSchema.getTableName(), false, false);
+    private static List<IndexSchema> getIndexes(Connection connection, TableSchema tableSchema) {
+        try {
+            final DatabaseMetaData databaseMetaData = connection.getMetaData();
+            final ResultSet rs = databaseMetaData.getIndexInfo(
+                    connection.getCatalog(),
+                    connection.getSchema(),
+                    tableSchema.getTableName(),
+                    false,
+                    false);
 
-        final List<IndexSchema> indexSchemas = new ArrayList<>();
-        final Map<String, IndexSchema> indexColumns = new HashMap<>();
-        // List<ColumnSchema> memberColumns = new ArrayList<ColumnSchema>();
-        // keySchema.setMemberColumns(memberColumns);
-        addIndex(tableSchema, rs, indexColumns, indexSchemas);
-        // rs = databaseMetaData.getIndexInfo(tableSchema.getTableCatalog(),
-        // null, tableSchema.getTableName(), false, true);
-        // addIndex(tableSchema, rs, indexColumns, indexSchemas);
-        return indexSchemas;
+            final List<IndexSchema> indexSchemas = new ArrayList<>();
+            final Map<String, IndexSchema> indexColumns = new HashMap<>();
+            // List<ColumnSchema> memberColumns = new ArrayList<ColumnSchema>();
+            // keySchema.setMemberColumns(memberColumns);
+            addIndex(tableSchema, rs, indexColumns, indexSchemas);
+            // rs = databaseMetaData.getIndexInfo(tableSchema.getTableCatalog(),
+            // null, tableSchema.getTableName(), false, true);
+            // addIndex(tableSchema, rs, indexColumns, indexSchemas);
+            return indexSchemas;
+        } catch (Exception ex) {
+            log.error("get table indexes fail", ex);
+            return Collections.emptyList();
+        }
+
     }
 
     /**
@@ -114,9 +122,8 @@ public class DatabaseSchemaLoader {
                 connection.close();
             }
         } catch (final Exception e) {
-            // TODO: handle exception
+            log.error("close connection", e);
         }
-
     }
 
     /**
@@ -126,13 +133,17 @@ public class DatabaseSchemaLoader {
      * @return the columns
      * @throws SQLException the SQL exception
      */
-    private static List<ColumnSchema> getColumns(Connection connection, TableSchema tableSchema) throws SQLException {
+    private static List<ColumnSchema> getColumns(Connection connection,
+                                                 TableSchema tableSchema,
+                                                 boolean loadFromDb) throws SQLException {
         final DatabaseMetaData databaseMetaData = connection.getMetaData();
 
-        final ResultSet rs = databaseMetaData.getColumns(tableSchema.getTableCatalog(), null, tableSchema.getTableName(), "%");
+        final ResultSet rs = databaseMetaData.getColumns(tableSchema.getTableCatalog(),
+                connection.getSchema(),
+                tableSchema.getTableName(), "%");
         final List<ColumnSchema> columnSchemas = new ArrayList<>();
 
-        Map<String, Map<String, Object>> columns = getColumnDefFromDB(connection, tableSchema);
+        Map<String, Map<String, Object>> columns = loadFromDb ? getColumnDefFromDB(connection, tableSchema) : Collections.emptyMap();
 
         while (rs.next()) {
             // String tableCat = rs.getString("TABLE_CAT");// 表目录（可能为空）
@@ -186,7 +197,7 @@ public class DatabaseSchemaLoader {
         return columnSchemas;
     }
 
-    private static Map<String, Map<String, Object>> getTableDefFromDB(Connection connection) throws SQLException {
+    private static Map<String, Map<String, Object>> getTableDefFromDB(Connection connection) {
         Map<String, Map<String, Object>> tableDef = new HashMap<>();
         try {
             String sql = "SELECT * from information_schema.`TABLES` s  where s.table_schema=? ";
@@ -206,7 +217,7 @@ public class DatabaseSchemaLoader {
     }
 
     private static Map<String, Map<String, Object>> getColumnDefFromDB(Connection connection,
-                                                                       TableSchema tableSchema) throws SQLException {
+                                                                       TableSchema tableSchema) {
         Map<String, Map<String, Object>> columns = new HashMap<>();
         try {
             String sql = "SELECT COLUMN_NAME,CHARACTER_SET_NAME,COLLATION_NAME from information_schema.COLUMNS s where s.table_schema=? and s.TABLE_NAME=?";
@@ -242,15 +253,25 @@ public class DatabaseSchemaLoader {
     }
 
     @SneakyThrows
-    public static DatabaseSchema load(Connection connection, String schema, String tablePrefix) {
-        DatabaseSchema databaseSchema = databaseSchemaMap.get(schema);
-        if (databaseSchema == null) {
-            databaseSchema = doLoad(connection, tablePrefix);
-            databaseSchemaMap.put(schema, databaseSchema);
-        }
-        return databaseSchema;
+    public static DatabaseSchema load(String driverClassName,
+                                      String jdbcUrl,
+                                      String userName,
+                                      String password,
+                                      String tablePrefix,
+                                      boolean loadFromDb) {
+        return doLoad(driverClassName, jdbcUrl, userName, password, tablePrefix, loadFromDb);
     }
 
+    @SneakyThrows
+    public static DatabaseSchema load(Connection connection,
+                                      String tablePrefix,
+                                      boolean loadFromDb) {
+        return doLoad(connection, tablePrefix, loadFromDb);
+    }
+    @SneakyThrows
+    public static DatabaseSchema load(Connection connection, String tablePrefix) {
+        return doLoad(connection, tablePrefix, false);
+    }
     @SneakyThrows
     public static DatabaseSchema load(Connection connection, String tablePrefix) {
         return load(connection, connection.getSchema(), tablePrefix);
@@ -265,7 +286,7 @@ public class DatabaseSchemaLoader {
      */
     private static KeySchema getPrimaryKey(Connection connection, TableSchema tableSchema) throws Exception {
         final DatabaseMetaData databaseMetaData = connection.getMetaData();
-        final ResultSet rs = databaseMetaData.getPrimaryKeys(tableSchema.getTableCatalog(), null, tableSchema.getTableName());
+        final ResultSet rs = databaseMetaData.getPrimaryKeys(tableSchema.getTableCatalog(), connection.getSchema(), tableSchema.getTableName());
         final KeySchema keySchema = new KeySchema();
         final List<ColumnSchema> memberColumns = new ArrayList<>();
         keySchema.setMemberColumns(memberColumns);
@@ -291,30 +312,33 @@ public class DatabaseSchemaLoader {
                                          String jdbcUrl,
                                          String userName,
                                          String password,
-                                         String tablePrefix) {
+                                         String tablePrefix,
+                                         boolean loadFromDb) {
         Connection connection = null;
         try {
             connection = getConnection(driverClassName, jdbcUrl, userName, password);
-            return doLoad(connection, tablePrefix);
+            return doLoad(connection, tablePrefix, loadFromDb);
         } finally {
             closeConnection(connection);
         }
     }
 
-    private static DatabaseSchema doLoad(Connection connection, String tablePrefix) throws Exception {
+    private static DatabaseSchema doLoad(Connection connection,
+                                         String tablePrefix,
+                                         boolean loadFromDb) throws Exception {
         DatabaseSchema databaseSchema = new DatabaseSchema();
         final DatabaseMetaData databaseMetaData = connection.getMetaData();
         databaseMetaData.getSchemaTerm();
         final String[] types = {"table", "view"};
-        final ResultSet rs = databaseMetaData.getTables(connection.getCatalog(), "dbo", null, types);
+        final ResultSet rs = databaseMetaData.getTables(connection.getCatalog(), connection.getSchema(), null, types);
         final List<TableSchema> tableSchemas = new ArrayList<>();
-        Map<String, Map<String, Object>> tables = getTableDefFromDB(connection);
+        Map<String, Map<String, Object>> tables = loadFromDb ? getTableDefFromDB(connection) : Collections.emptyMap();
         while (rs.next()) {
             final TableSchema tableSchema = new TableSchema(tablePrefix);
             tableSchema.setTableCatalog(rs.getString("TABLE_CAT"));
             tableSchema.setTableName(rs.getString("TABLE_NAME"));
             tableSchema.setComment(rs.getString("REMARKS"));
-            final List<ColumnSchema> columnSchemas = getColumns(connection, tableSchema);
+            final List<ColumnSchema> columnSchemas = getColumns(connection, tableSchema, loadFromDb);
             tableSchema.setColumns(columnSchemas);
             tableSchema.setIndexes(getIndexes(connection, tableSchema));
             tableSchema.setPrimaryKey(getPrimaryKey(connection, tableSchema));

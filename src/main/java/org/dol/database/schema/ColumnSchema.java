@@ -231,7 +231,7 @@ public class ColumnSchema {
      * @param capitalizePropertyName the new c property name
      */
     public void setCapitalizePropertyName(String capitalizePropertyName) {
-        capitalizePropertyName = capitalizePropertyName;
+        this.capitalizePropertyName = capitalizePropertyName;
     }
 
     /**
@@ -371,7 +371,7 @@ public class ColumnSchema {
      */
     public String getEasyUIClassForEdit() {
 
-        if (!isEditable()) {
+        if (notEditable()) {
             return "easyui-textbox";
         }
 
@@ -411,7 +411,7 @@ public class ColumnSchema {
      * @return the easy UI input option for edit
      */
     public String getEasyUIInputOptionForEdit() {
-        if (!isEditable()) {
+        if (notEditable()) {
             return "";
         }
 
@@ -788,7 +788,7 @@ public class ColumnSchema {
         if (isDeletedColumn == null) {
             isDeletedColumn = SchemaConstraints.DELETED_COLUMN.contains(this.columnName.toUpperCase());
         }
-        return isDeletedColumn == null ? false : isDeletedColumn;
+        return isDeletedColumn;
     }
 
     public boolean isVersionColumn() {
@@ -800,15 +800,15 @@ public class ColumnSchema {
      *
      * @return true, if is editable
      */
-    public boolean isEditable() {
-        return !(isPrimary()
+    public boolean notEditable() {
+        return isPrimary()
                 || isCreateUserColumn()
                 || isUpdateUserColumn()
                 || isUpdateTimeColumn()
                 || isCreateTimeColumn()
                 || isVersionColumn()
                 || isStatusColumn()
-                || isDeletedColumn());
+                || isDeletedColumn();
     }
 
     /**
@@ -956,7 +956,7 @@ public class ColumnSchema {
                 }
             }
         }
-        return isStatusColumn == null ? false : isStatusColumn;
+        return isStatusColumn != null && isStatusColumn;
     }
 
     /**
@@ -1063,7 +1063,6 @@ public class ColumnSchema {
     /**
      * 参照方法名.
      *
-     * @return
      */
     public boolean isUrlColumn() {
 
@@ -1075,7 +1074,6 @@ public class ColumnSchema {
     /**
      * 参照方法名.
      *
-     * @return
      */
     public boolean isEmailColumn() {
         return isStringColumn() && (this.columnName.toLowerCase().endsWith("email"));

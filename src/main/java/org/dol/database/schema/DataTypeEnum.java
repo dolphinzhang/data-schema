@@ -185,7 +185,7 @@ public enum DataTypeEnum {
      */
     private String javaType;
 
-    private String csType;
+    private final String csType;
 
     /**
      * The full java type.

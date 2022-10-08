@@ -77,9 +77,7 @@ public class Utils {
             preIsDigit = isDigit;
             preIsUpperCase = isUpperCase;
         }
-        if (pre < name.length()) {
-            parts.add(name.substring(pre));
-        }
+        parts.add(name.substring(pre));
         return parts;
     }
 
@@ -310,7 +308,7 @@ public class Utils {
             }
             sb.append(value).append(c);
         }
-        return sb.length() == 0 ? "" : sb.toString().substring(0, sb.length() - 1);
+        return sb.length() == 0 ? "" : sb.substring(0, sb.length() - 1);
     }
 
 
