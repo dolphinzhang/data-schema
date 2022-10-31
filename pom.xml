@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.dtools</groupId>
     <artifactId>db-tools</artifactId>
-    <version>1.0.2-SNAPSHOT</version>
+    <version>1.0.3-SNAPSHOT</version>
     <properties>
         <lombok.version>1.18.12</lombok.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

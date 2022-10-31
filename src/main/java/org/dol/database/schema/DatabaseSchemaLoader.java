@@ -332,8 +332,16 @@ public class DatabaseSchemaLoader {
             catalog = connection.getCatalog();
         }
         if (Utils.isEmpty(schema)) {
-            schema = connection.getSchema();
+            try {
+                schema = connection.getSchema();
+            } catch (Exception ignore) {
+
+            }
         }
+        if (Utils.isEmpty(schema)) {
+            schema = catalog;
+        }
+
         DatabaseSchema databaseSchema = new DatabaseSchema();
         final DatabaseMetaData databaseMetaData = connection.getMetaData();
         databaseMetaData.getSchemaTerm();
