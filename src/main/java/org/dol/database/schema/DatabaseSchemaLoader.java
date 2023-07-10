@@ -38,6 +38,7 @@ public class DatabaseSchemaLoader {
                                                  String password,
                                                  String tablePrefix) {
         return new DatabaseSchemaLoader(driverClassName, jdbcUrl, userName, password, tablePrefix);
+
     }
 
     /**

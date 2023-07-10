@@ -110,8 +110,8 @@ public class ColumnSchema {
      * The setter.
      */
     private String       setter;
-    private Boolean      isStatusColumn  = false;
-    private Boolean      isDeletedColumn = false;
+    private Boolean      isStatusColumn  ;
+    private Boolean      isDeletedColumn ;
     private String       csPropertyName;
 
     public String getCharacterSet() {
@@ -949,6 +949,7 @@ public class ColumnSchema {
      */
     public boolean isStatusColumn() {
         if (isStatusColumn == null) {
+            isStatusColumn = false;
             for (String statusName : SchemaConstraints.STATUS_COLUMN) {
                 isStatusColumn = columnName.equalsIgnoreCase(statusName);
                 if (isStatusColumn) {
@@ -956,7 +957,7 @@ public class ColumnSchema {
                 }
             }
         }
-        return isStatusColumn != null && isStatusColumn;
+        return isStatusColumn;
     }
 
     /**
@@ -1134,7 +1135,7 @@ public class ColumnSchema {
         boolean notCreateRequestColumn =
                 this.isAutoIncrement
                         || this.isPrimary
-                        || this.isStatusColumn
+                        || this.isStatusColumn()
                         || this.isCreateTimeColumn()
                         || this.isUpdateTimeColumn()
                         || this.isUpdateUserColumn()
