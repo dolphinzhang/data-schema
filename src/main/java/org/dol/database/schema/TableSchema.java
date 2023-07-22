@@ -54,7 +54,7 @@ public class TableSchema {
     private       ColumnSchema       deletedColumn;
     private       ColumnSchema       remarkColumn;
     private       String             nameWithoutPrefix;
-    private String collation;
+    private       String             collation;
 
     public TableSchema(String prefix) {
         this.prefix = prefix;
@@ -300,6 +300,26 @@ public class TableSchema {
         this.statusColumn = statusColumn;
     }
 
+    public ColumnSchema getDeleteUserColumn() {
+        return columns.stream().filter(ColumnSchema::isDeleteUserColumn)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public ColumnSchema getDeleteTimeColumn() {
+        return columns.stream().filter(ColumnSchema::isDeleteTimeColumn)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public boolean hasDeleteUserColumn() {
+        return columns.stream().anyMatch(ColumnSchema::isDeleteUserColumn);
+    }
+
+    public boolean hasDeleteTimeColumn() {
+        return columns.stream().anyMatch(ColumnSchema::isDeleteTimeColumn);
+    }
+
     /**
      * Gets the table catalog.
      *
@@ -395,7 +415,7 @@ public class TableSchema {
             return deletedColumn;
         }
         for (final ColumnSchema columnSchema : columns) {
-            if (columnSchema.isDeletedColumn()) {
+            if (columnSchema.isDeleteColumn()) {
                 deletedColumn = columnSchema;
                 break;
             }

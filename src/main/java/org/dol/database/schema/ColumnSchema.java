@@ -72,7 +72,7 @@ public class ColumnSchema {
      * The data type.
      */
     private int          dataType;
-    private Boolean      unsigned        = false;
+    private Boolean      unsigned = false;
     /**
      * The data type name.
      */
@@ -110,9 +110,11 @@ public class ColumnSchema {
      * The setter.
      */
     private String       setter;
-    private Boolean      isStatusColumn  ;
-    private Boolean      isDeletedColumn ;
+    private Boolean      isStatusColumn;
+    private Boolean      isDeletedColumn;
     private String       csPropertyName;
+    private String       characterSet;
+    private String       collation;
 
     public String getCharacterSet() {
         return characterSet;
@@ -129,9 +131,6 @@ public class ColumnSchema {
     public void setCollation(String collation) {
         this.collation = collation;
     }
-
-    private String characterSet;
-    private String collation;
 
     public Boolean getUnsigned() {
         return unsigned;
@@ -939,7 +938,33 @@ public class ColumnSchema {
      * @return true, if is range where
      */
     public boolean isRangeWhere() {
-        return isDateColumn() || DataTypeEnum.DECIMAL.equals(dataTypeEnum);
+        if (isDateColumn() || DataTypeEnum.DECIMAL.equals(dataTypeEnum)) {
+            return true;
+        }
+        if (DataTypeEnum.INTEGER.equals(dataTypeEnum)) {
+            return this.columnName.equalsIgnoreCase("to")
+                    || this.columnName.equalsIgnoreCase("age")
+                    || this.columnName.equalsIgnoreCase("birthday")
+                    || this.columnName.equalsIgnoreCase("start")
+                    || this.columnName.equalsIgnoreCase("end")
+                    || this.columnName.equalsIgnoreCase("width")
+                    || this.columnName.equalsIgnoreCase("height")
+                    || this.columnName.equalsIgnoreCase("length")
+                    || this.columnName.equalsIgnoreCase("size")
+                    || this.columnName.startsWith("start_")
+                    || this.columnName.startsWith("end_")
+                    || this.columnName.startsWith("from_")
+                    || this.columnName.startsWith("to_")
+
+                    || this.columnName.endsWith("_width")
+                    || this.columnName.endsWith("_height")
+                    || this.columnName.endsWith("_length")
+                    || this.columnName.endsWith("_size")
+                    || this.columnName.endsWith("_age")
+                    || this.columnName.endsWith("_birthday")
+                    ;
+        }
+        return false;
     }
 
     /**
@@ -958,6 +983,16 @@ public class ColumnSchema {
             }
         }
         return isStatusColumn;
+    }
+
+    public boolean isDeleteTimeColumn() {
+        return SchemaConstraints.DELETE_TIME_COLUMN.stream().anyMatch(c -> c.equalsIgnoreCase(this.columnName));
+    }
+    public boolean isDeleteUserColumn() {
+        return SchemaConstraints.DELETE_USER_COLUMN.stream().anyMatch(c -> c.equalsIgnoreCase(this.columnName));
+    }
+    public boolean isCompanyColumn() {
+        return columnName.equalsIgnoreCase(SchemaConstraints.COMPANY_ID);
     }
 
     /**
@@ -1063,7 +1098,6 @@ public class ColumnSchema {
 
     /**
      * 参照方法名.
-     *
      */
     public boolean isUrlColumn() {
 
@@ -1074,7 +1108,6 @@ public class ColumnSchema {
 
     /**
      * 参照方法名.
-     *
      */
     public boolean isEmailColumn() {
         return isStringColumn() && (this.columnName.toLowerCase().endsWith("email"));
@@ -1138,7 +1171,9 @@ public class ColumnSchema {
                         || this.isStatusColumn()
                         || this.isCreateTimeColumn()
                         || this.isUpdateTimeColumn()
+                        || this.isCreateUserColumn()
                         || this.isUpdateUserColumn()
+                        || this.isCompanyColumn()
                         || this.isDeletedColumn();
         return !notCreateRequestColumn;
 
@@ -1152,8 +1187,14 @@ public class ColumnSchema {
                         || this.isStatusColumn()
                         || this.isCreateUserColumn()
                         || this.isUpdateTimeColumn()
+                        || this.isUpdateUserColumn()
+                        || this.isCompanyColumn()
                         || this.isDeletedColumn();
         return !notUpdateRequestColumn;
 
+    }
+
+    public boolean isDeleteColumn() {
+        return SchemaConstraints.DELETE_COLUMN.contains(this.columnName.toUpperCase());
     }
 }

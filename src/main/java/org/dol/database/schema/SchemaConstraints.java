@@ -47,14 +47,19 @@ public abstract class SchemaConstraints {
     /**
      * The Constant DELETED_COLUMN.
      */
-    public static final List<String> DELETED_COLUMN = Arrays.asList("IS_DELETED", "DELETE_FLAG","DELETED");
+    public static final List<String> DELETED_COLUMN = Arrays.asList("IS_DELETED", "DELETE_FLAG", "DELETED", "DELETE_TIME", "DELETE_USER", "DELETED_TIME", "DELETED_USER");
+
+    public static final List<String> DELETE_COLUMN = Arrays.asList("IS_DELETED", "DELETE_FLAG", "DELETED");
+
 
     public static final List<String> VERSION_COLUMN = Arrays.asList("VERSION", "V", "VER");
     /**
      * The Constant STATUS_COLUMN.
      */
-    public static final List<String> STATUS_COLUMN = Arrays.asList("STATUS", "STAT");
-
+    public static final List<String> STATUS_COLUMN  = Arrays.asList("STATUS", "STAT");
+    public static final List<String> DELETE_USER_COLUMN  = Arrays.asList("DELETE_USER", "DELETED_USER", "DELETED_BY", "DELETE_BY");
+    public static final List<String> DELETE_TIME_COLUMN  = Arrays.asList("DELETE_TIME", "DELETED_TIME");
     public static final Pattern SYMBOL_PATTERN = Pattern.compile("[,，.。:：;；\\s\\-—]");
 
+    public static final String COMPANY_ID = "COMPANY_ID";
 }
