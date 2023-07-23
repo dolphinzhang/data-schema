@@ -859,7 +859,25 @@ public class ColumnSchema {
      * @return true, if is like where
      */
     public boolean isLikeWhere() {
-        return !(isUpdateTimeColumn() || isCreateTimeColumn() || isDateColumn() || isBooleanColumn()) && isCharOrVarcharColumn() && columnSize < 100;
+
+        return isCharOrVarcharColumn()
+                && columnSize < 100
+                && !(isUpdateTimeColumn()
+                || isCreateTimeColumn()
+                || isDateColumn()
+                || isBooleanColumn());
+    }
+
+    public boolean isKeywordColumn() {
+        return isCharOrVarcharColumn()
+                && columnSize < 100
+                && !(isUpdateTimeColumn()
+                || isCreateTimeColumn()
+                || isDateColumn()
+                || isBooleanColumn()
+                || isUpdateUserColumn()
+                || isCreateUserColumn()
+                || isDeleteUserColumn());
     }
 
     /**
@@ -988,9 +1006,11 @@ public class ColumnSchema {
     public boolean isDeleteTimeColumn() {
         return SchemaConstraints.DELETE_TIME_COLUMN.stream().anyMatch(c -> c.equalsIgnoreCase(this.columnName));
     }
+
     public boolean isDeleteUserColumn() {
         return SchemaConstraints.DELETE_USER_COLUMN.stream().anyMatch(c -> c.equalsIgnoreCase(this.columnName));
     }
+
     public boolean isCompanyColumn() {
         return columnName.equalsIgnoreCase(SchemaConstraints.COMPANY_ID);
     }

@@ -5,6 +5,7 @@ import org.dol.database.utils.Utils;
 
 import java.util.List;
 import java.util.regex.Matcher;
+import java.util.stream.Collectors;
 
 
 public class TableSchema {
@@ -373,6 +374,14 @@ public class TableSchema {
             }
         }
         return updateTimeColumn;
+    }
+
+    public boolean hasKeywordColumn() {
+        return this.columns.stream().anyMatch(ColumnSchema::isKeywordColumn);
+    }
+
+    public List<ColumnSchema> getKeywordColumns() {
+        return this.columns.stream().filter(ColumnSchema::isKeywordColumn).collect(Collectors.toList());
     }
 
     /**
