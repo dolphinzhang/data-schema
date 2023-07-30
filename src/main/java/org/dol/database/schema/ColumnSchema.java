@@ -861,7 +861,7 @@ public class ColumnSchema {
     public boolean isLikeWhere() {
 
         return isCharOrVarcharColumn()
-                && columnSize < 256
+                && columnSize < 128
                 && !(isUpdateTimeColumn()
                 || isCreateTimeColumn()
                 || isDateColumn()
@@ -870,7 +870,7 @@ public class ColumnSchema {
 
     public boolean isKeywordColumn() {
         return isCharOrVarcharColumn()
-                && columnSize < 256
+                && columnSize < 128
                 && !(isUpdateTimeColumn()
                 || isCreateTimeColumn()
                 || isDateColumn()
