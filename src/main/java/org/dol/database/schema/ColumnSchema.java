@@ -148,7 +148,7 @@ public class ColumnSchema {
     public Double getColumnLength() {
         Double double1 = (double) columnSize;
         if (decimalDigits > 0) {
-            double1 = new Double(columnSize + "." + decimalDigits);
+            double1 = Double.parseDouble(columnSize + "." + decimalDigits);
         }
         return double1;
     }
