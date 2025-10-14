@@ -82,10 +82,14 @@ public abstract class ScriptGenerator {
 
     private static void appendType(StringBuilder sbTable, ColumnSchema column) {
         DataTypeEnum typeEnum = column.getDataTypeEnum();
-        sbTable.append(typeEnum.getDataTypeName());
-
+        if (typeEnum != null) {
+            sbTable.append(typeEnum.getDataTypeName());
+        } else {
+            sbTable.append(column.getDataTypeName());
+        }
         boolean noWidth =
-                typeEnum == DataTypeEnum.TEXT
+                typeEnum == null
+                        || typeEnum == DataTypeEnum.TEXT
                         || typeEnum == DataTypeEnum.LONGTEXT
                         || typeEnum == DataTypeEnum.TINYTEXT
                         || typeEnum == DataTypeEnum.MEDIUMTEXT
