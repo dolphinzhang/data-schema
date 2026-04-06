@@ -114,6 +114,11 @@ public class DatabaseSchema {
         }
 
         @Override
+        public int hashCode() {
+            return fieldName != null ? fieldName.hashCode() : 0;
+        }
+
+        @Override
         public int compareTo(FieldName o) {
             return this.fieldName.compareTo(o.fieldName);
         }
