@@ -1,11 +1,11 @@
 package org.dol.database.utils;
 
+import lombok.extern.slf4j.Slf4j;
 import org.dol.database.schema.*;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
+@Slf4j
 public abstract class ScriptGenerator {
 
     public static String generate(DatabaseSchema databaseSchema) {
@@ -15,7 +15,7 @@ public abstract class ScriptGenerator {
                 String tableScript = tableDDL(table);
                 sbDB.append(tableScript);
             } catch (Exception exception) {
-                exception.printStackTrace();
+                log.error("Failed to generate DDL for table: {}", table.getTableName(), exception);
             }
         }
         return sbDB.toString();
@@ -99,8 +99,21 @@ public abstract class ScriptGenerator {
                         || typeEnum == DataTypeEnum.MEDIUMBLOB
                         || typeEnum == DataTypeEnum.TINYBLOB
                         || typeEnum == DataTypeEnum.DATE
+                        || typeEnum == DataTypeEnum.DATETIME
+                        || typeEnum == DataTypeEnum.TIME
                         || typeEnum == DataTypeEnum.TIMESTAMP
-                        || typeEnum == DataTypeEnum.YEAR;
+                        || typeEnum == DataTypeEnum.YEAR
+                        || typeEnum == DataTypeEnum.ENUM
+                        || typeEnum == DataTypeEnum.SET
+                        || typeEnum == DataTypeEnum.JSON
+                        || typeEnum == DataTypeEnum.GEOMETRY
+                        || typeEnum == DataTypeEnum.POINT
+                        || typeEnum == DataTypeEnum.LINESTRING
+                        || typeEnum == DataTypeEnum.POLYGON
+                        || typeEnum == DataTypeEnum.MULTIPOINT
+                        || typeEnum == DataTypeEnum.MULTILINESTRING
+                        || typeEnum == DataTypeEnum.MULTIPOLYGON
+                        || typeEnum == DataTypeEnum.GEOMETRYCOLLECTION;
 
         if (noWidth) {
             return;
@@ -108,9 +121,9 @@ public abstract class ScriptGenerator {
 
         if (typeEnum == DataTypeEnum.BIT || typeEnum == DataTypeEnum.BOOLEAN) {
             sbTable.append("(1)");
-        } else if (typeEnum == DataTypeEnum.INT || typeEnum == DataTypeEnum.BIGINT || typeEnum == DataTypeEnum.MEDIUMINT || typeEnum == DataTypeEnum.SMALLINT || typeEnum == DataTypeEnum.TINYINT) {
+        } else if (typeEnum == DataTypeEnum.INT || typeEnum == DataTypeEnum.INTEGER || typeEnum == DataTypeEnum.BIGINT || typeEnum == DataTypeEnum.MEDIUMINT || typeEnum == DataTypeEnum.SMALLINT || typeEnum == DataTypeEnum.TINYINT) {
             sbTable.append("(").append(column.getColumnSize() + 1).append(")");
-        } else if (typeEnum == DataTypeEnum.DECIMAL || typeEnum == DataTypeEnum.DOUBLE || typeEnum == DataTypeEnum.FLOAT || typeEnum == DataTypeEnum.REAL) {
+        } else if (typeEnum == DataTypeEnum.DECIMAL || typeEnum == DataTypeEnum.NUMERIC || typeEnum == DataTypeEnum.DOUBLE || typeEnum == DataTypeEnum.FLOAT || typeEnum == DataTypeEnum.REAL) {
             sbTable.append("(").append(column.getColumnSize()).append(",").append(column.getDecimalDigits()).append(")");
         } else {
             sbTable.append("(").append(column.getColumnSize()).append(")");
@@ -132,23 +145,56 @@ public abstract class ScriptGenerator {
         return sb.toString();
     }
 
-    public static String generateModifySQL(DatabaseSchema fromDB,
-                                           DatabaseSchema toDB,
+    /**
+     * 比较两个 schema 并生成 ALTER 脚本, 使 currentSchema 对齐到 targetSchema.
+     *
+     * @param targetSchema  目标 schema (期望的最终状态)
+     * @param currentSchema 当前 schema (线上现有状态)
+     * @param includeNewTable 是否为 targetSchema 中新增的表生成 CREATE TABLE
+     * @param ignoreTables  忽略的表名 (支持 * 通配符, 如 "log_*")
+     * @return ALTER/CREATE SQL 脚本
+     */
+    public static String generateModifySQL(DatabaseSchema targetSchema,
+                                           DatabaseSchema currentSchema,
                                            boolean includeNewTable,
                                            String... ignoreTables) {
         StringBuilder updateScript = new StringBuilder();
-        Collection<TableSchema> fromTables = fromDB.getTables();
-        Collection<TableSchema> toTables = toDB.getTables();
-        for (TableSchema fromTable : fromTables) {
-            if (ignoreTables.length > 0 && shouldIgnore(fromTable, ignoreTables)) {
+        Collection<TableSchema> targetTables = targetSchema.getTables();
+        Collection<TableSchema> currentTables = currentSchema.getTables();
+
+        // 预建当前表名 Map, 避免 O(n*m) stream 查找
+        Map<String, TableSchema> currentTableMap = new HashMap<>();
+        for (TableSchema ct : currentTables) {
+            currentTableMap.put(ct.getTableName().toLowerCase(), ct);
+        }
+        Map<String, TableSchema> targetTableMap = new HashMap<>();
+        for (TableSchema tt : targetTables) {
+            targetTableMap.put(tt.getTableName().toLowerCase(), tt);
+        }
+
+        for (TableSchema targetTable : targetTables) {
+            if (ignoreTables.length > 0 && shouldIgnore(targetTable, ignoreTables)) {
                 continue;
             }
-            TableSchema toTable = toTables.stream().filter(ot -> sameTable(ot, fromTable)).findFirst().orElse(null);
-            String tableScript = tableChangeScript(fromTable, toTable, includeNewTable);
+            TableSchema currentTable = currentTableMap.get(targetTable.getTableName().toLowerCase());
+            String tableScript = tableChangeScript(targetTable, currentTable, includeNewTable);
             if (Utils.hasText(tableScript)) {
                 updateScript.append(tableScript).append("\n\n");
             }
         }
+
+        // 报告仅存在于 currentSchema 中的表
+        for (TableSchema currentTable : currentTables) {
+            if (ignoreTables.length > 0 && shouldIgnore(currentTable, ignoreTables)) {
+                continue;
+            }
+            if (!targetTableMap.containsKey(currentTable.getTableName().toLowerCase())) {
+                updateScript.append("-- WARNING: table `")
+                        .append(currentTable.getTableName())
+                        .append("` exists in current but not in target (not dropped)\n");
+            }
+        }
+
         return updateScript.toString();
     }
 
@@ -169,69 +215,92 @@ public abstract class ScriptGenerator {
         return false;
     }
 
-    private static String tableChangeScript(TableSchema fromTable, TableSchema toTable, boolean includeNewTable) {
-        if (toTable == null) {
-            return includeNewTable ? tableDDL(fromTable) : null;
-        } else {
-            StringBuilder sbAlterTableScript = new StringBuilder();
-            List<ColumnSchema> fromColumns = fromTable.getColumns();
-            List<ColumnSchema> toColumns = toTable.getColumns();
-            for (ColumnSchema fromColumn : fromColumns) {
-                ColumnSchema toColumn = toColumns.stream()
-                        .filter(col -> col.getColumnName().equalsIgnoreCase(fromColumn.getColumnName()))
-                        .findFirst().orElse(null);
-                String fromColumnDef = columnDef(fromTable, fromColumn);
-                if (toColumn == null) {
-                    sbAlterTableScript.append("ADD COLUMN ").append(fromColumnDef);
-                } else {
-                    String toColumnDef = columnDef(toTable, toColumn);
-                    if (!fromColumnDef.equalsIgnoreCase(toColumnDef)) {
-                        sbAlterTableScript.append("MODIFY COLUMN ").append(fromColumnDef);
-                    }
-                }
-            }
-            KeySchema fromPrimaryKey = fromTable.getPrimaryKey();
-            KeySchema toPrimaryKey = toTable.getPrimaryKey();
-            if (fromPrimaryKey == null) {
-                if (toPrimaryKey != null) {
-                    appendDropPrimaryKey(sbAlterTableScript);
-                }
-            } else {
-                if (toPrimaryKey == null) {
-                    appendAddPrimaryKey(sbAlterTableScript, fromPrimaryKey);
-                } else if (memberChanged(fromPrimaryKey.getMemberColumns(), toPrimaryKey.getMemberColumns())) {
-                    appendDropPrimaryKey(sbAlterTableScript);
-                    appendAddPrimaryKey(sbAlterTableScript, fromPrimaryKey);
-                }
-            }
-            List<IndexSchema> fromIndexes = fromTable.getIndexes();
-            List<IndexSchema> toIndexes = toTable.getIndexes();
-            for (IndexSchema fromIndex : fromIndexes) {
-                IndexSchema toIndex = toIndexes.stream()
-                        .filter(idx -> fromIndex.getIndexName().equalsIgnoreCase(idx.getIndexName()))
-                        .findFirst()
-                        .orElse(null);
-                if (toIndex == null) {
-                    appendAddIndex(sbAlterTableScript, fromIndex);
-                } else if (hasChange(fromIndex, toIndex)) {
-                    appendDropIndex(sbAlterTableScript, toIndex.getIndexName());
-                    appendAddIndex(sbAlterTableScript, fromIndex);
-                }
-            }
-            for (IndexSchema toIndex : toIndexes) {
-                IndexSchema fromIndex = fromIndexes.stream()
-                        .filter(idx -> toIndex.getIndexName().equalsIgnoreCase(idx.getIndexName()))
-                        .findFirst()
-                        .orElse(null);
-                if (fromIndex == null) {
-                    appendDropIndex(sbAlterTableScript, toIndex.getIndexName());
-                }
-            }
-            if (sbAlterTableScript.length() == 0) {
-                return null;
-            }
-            return "ALTER TABLE `" + fromTable.getTableName() + "`\n" + sbAlterTableScript.substring(0, sbAlterTableScript.length() - 2) + ";";
+    private static String tableChangeScript(TableSchema targetTable, TableSchema currentTable, boolean includeNewTable) {
+        if (currentTable == null) {
+            return includeNewTable ? tableDDL(targetTable) : null;
         }
+        StringBuilder sb = new StringBuilder();
+        List<ColumnSchema> targetColumns = targetTable.getColumns();
+        List<ColumnSchema> currentColumns = currentTable.getColumns();
+
+        // 预建列名 Map
+        Map<String, ColumnSchema> currentColMap = new HashMap<>();
+        for (ColumnSchema col : currentColumns) {
+            currentColMap.put(col.getColumnName().toLowerCase(), col);
+        }
+        Set<String> targetColNames = new HashSet<>();
+        for (ColumnSchema col : targetColumns) {
+            targetColNames.add(col.getColumnName().toLowerCase());
+        }
+
+        // 新增 / 修改列
+        for (ColumnSchema targetCol : targetColumns) {
+            ColumnSchema currentCol = currentColMap.get(targetCol.getColumnName().toLowerCase());
+            String targetColDef = columnDef(targetTable, targetCol);
+            if (currentCol == null) {
+                sb.append("ADD COLUMN ").append(targetColDef);
+            } else {
+                String currentColDef = columnDef(currentTable, currentCol);
+                if (!targetColDef.equalsIgnoreCase(currentColDef)) {
+                    sb.append("MODIFY COLUMN ").append(targetColDef);
+                }
+            }
+        }
+
+        // 报告仅存在于 current 中的列
+        for (ColumnSchema currentCol : currentColumns) {
+            if (!targetColNames.contains(currentCol.getColumnName().toLowerCase())) {
+                sb.append("-- WARNING: column `").append(currentCol.getColumnName())
+                        .append("` exists in current but not in target (not dropped),\n");
+            }
+        }
+
+        // 主键变更
+        KeySchema targetPK = targetTable.getPrimaryKey();
+        KeySchema currentPK = currentTable.getPrimaryKey();
+        if (targetPK == null) {
+            if (currentPK != null) {
+                appendDropPrimaryKey(sb);
+            }
+        } else {
+            if (currentPK == null) {
+                appendAddPrimaryKey(sb, targetPK);
+            } else if (memberChanged(targetPK.getMemberColumns(), currentPK.getMemberColumns())) {
+                appendDropPrimaryKey(sb);
+                appendAddPrimaryKey(sb, targetPK);
+            }
+        }
+
+        // 索引变更
+        List<IndexSchema> targetIndexes = targetTable.getIndexes();
+        List<IndexSchema> currentIndexes = currentTable.getIndexes();
+        Map<String, IndexSchema> currentIdxMap = new HashMap<>();
+        for (IndexSchema idx : currentIndexes) {
+            currentIdxMap.put(idx.getIndexName().toLowerCase(), idx);
+        }
+        Set<String> targetIdxNames = new HashSet<>();
+        for (IndexSchema idx : targetIndexes) {
+            targetIdxNames.add(idx.getIndexName().toLowerCase());
+        }
+        for (IndexSchema targetIdx : targetIndexes) {
+            IndexSchema currentIdx = currentIdxMap.get(targetIdx.getIndexName().toLowerCase());
+            if (currentIdx == null) {
+                appendAddIndex(sb, targetIdx);
+            } else if (hasChange(targetIdx, currentIdx)) {
+                appendDropIndex(sb, currentIdx.getIndexName());
+                appendAddIndex(sb, targetIdx);
+            }
+        }
+        for (IndexSchema currentIdx : currentIndexes) {
+            if (!targetIdxNames.contains(currentIdx.getIndexName().toLowerCase())) {
+                appendDropIndex(sb, currentIdx.getIndexName());
+            }
+        }
+
+        if (sb.length() == 0) {
+            return null;
+        }
+        return "ALTER TABLE `" + targetTable.getTableName() + "`\n" + sb.substring(0, sb.length() - 2) + ";";
     }
 
     private static void appendDropPrimaryKey(StringBuilder sbAlterTableScript) {
@@ -269,19 +338,18 @@ public abstract class ScriptGenerator {
         return memberChanged(fromIndex.getMemberColumns(), toIndex.getMemberColumns());
     }
 
-    private static boolean memberChanged(List<ColumnSchema> fromMemeberColumns, List<ColumnSchema> toMemeberColumns) {
-        for (int i = 0; i < fromMemeberColumns.size(); i++) {
-            ColumnSchema fromIndexCol = fromMemeberColumns.get(i);
-            ColumnSchema toIndexCol = toMemeberColumns.get(i);
-            if (!Objects.equals(fromIndexCol.getColumnName(), toIndexCol.getColumnName())) {
+    private static boolean memberChanged(List<ColumnSchema> fromMemberColumns, List<ColumnSchema> toMemberColumns) {
+        if (fromMemberColumns.size() != toMemberColumns.size()) {
+            return true;
+        }
+        for (int i = 0; i < fromMemberColumns.size(); i++) {
+            ColumnSchema fromCol = fromMemberColumns.get(i);
+            ColumnSchema toCol = toMemberColumns.get(i);
+            if (!Objects.equals(fromCol.getColumnName(), toCol.getColumnName())) {
                 return true;
             }
         }
         return false;
-    }
-
-    private static boolean sameTable(TableSchema ot, TableSchema table) {
-        return ot.getTableName().equalsIgnoreCase(table.getTableName());
     }
 
 }

@@ -5,90 +5,44 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.dol.database.utils.Utils;
 
-import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.*;
 
 @Slf4j
 public class DatabaseSchemaLoader {
 
-    private static final String                      EMPTY_STRING      = "";
-    private static final Map<String, DatabaseSchema> databaseSchemaMap = new HashMap<>();
-    private final        String                      driverClassName;
-    private final        String                      jdbcUrl;
-    private final        String                      userName;
-    private final        String                      password;
-    private final        String                      tablePrefix;
-
-    public DatabaseSchemaLoader(String driverClassName,
-                                String jdbcUrl,
-                                String userName,
-                                String password, String tablePrefix) {
-
-        this.driverClassName = driverClassName;
-        this.jdbcUrl = jdbcUrl;
-        this.userName = userName;
-        this.password = password;
-        this.tablePrefix = tablePrefix;
+    private DatabaseSchemaLoader() {
     }
 
-    public static DatabaseSchemaLoader newLoader(String driverClassName,
-                                                 String jdbcUrl,
-                                                 String userName,
-                                                 String password,
-                                                 String tablePrefix) {
-        return new DatabaseSchemaLoader(driverClassName, jdbcUrl, userName, password, tablePrefix);
-
-    }
-
-    /**
-     * 参照方法名.
-     *
-     * @param tableSchema the table schema
-     * @return the indexes
-     */
     private static List<IndexSchema> getIndexes(Connection connection, String catalog, String schema, TableSchema tableSchema) {
         try {
             final DatabaseMetaData databaseMetaData = connection.getMetaData();
-            final ResultSet rs = databaseMetaData.getIndexInfo(
-                    catalog,
-                    schema,
-                    tableSchema.getTableName(),
-                    false,
-                    false);
+            try (ResultSet rs = databaseMetaData.getIndexInfo(
+                    catalog, schema, tableSchema.getTableName(), false, false)) {
 
-            final List<IndexSchema> indexSchemas = new ArrayList<>();
-            final Map<String, IndexSchema> indexColumns = new HashMap<>();
-            // List<ColumnSchema> memberColumns = new ArrayList<ColumnSchema>();
-            // keySchema.setMemberColumns(memberColumns);
-            addIndex(tableSchema, rs, indexColumns, indexSchemas);
-            // rs = databaseMetaData.getIndexInfo(tableSchema.getTableCatalog(),
-            // null, tableSchema.getTableName(), false, true);
-            // addIndex(tableSchema, rs, indexColumns, indexSchemas);
-            return indexSchemas;
+                final List<IndexSchema> indexSchemas = new ArrayList<>();
+                final Map<String, IndexSchema> indexColumns = new HashMap<>();
+                addIndex(tableSchema, rs, indexColumns, indexSchemas);
+                return indexSchemas;
+            }
         } catch (Exception ex) {
             log.error("get table indexes fail", ex);
             return Collections.emptyList();
         }
-
     }
 
-    /**
-     * 添加索引到tableSchema.
-     *
-     * @param tableSchema  the table schema
-     * @param rs           the rs
-     * @param indexColumns the index columns
-     * @param indexSchemas the index schemas
-     * @throws SQLException the SQL exception
-     */
     private static void addIndex(TableSchema tableSchema, ResultSet rs, Map<String, IndexSchema> indexColumns, List<IndexSchema> indexSchemas) throws SQLException {
+        // 预建列名 → ColumnSchema 映射, 避免每个索引列都线性扫描
+        Map<String, ColumnSchema> columnByName = new HashMap<>();
+        for (ColumnSchema col : tableSchema.getColumns()) {
+            columnByName.put(col.getColumnName().toUpperCase(), col);
+        }
         while (rs.next()) {
-            final String indexName = rs.getString("INDEX_NAME");// 索引的名称
+            final String indexName = rs.getString("INDEX_NAME");
             if (indexName == null || indexName.equalsIgnoreCase("PRIMARY")) {
                 continue;
             }
-            final String columnName = rs.getString("COLUMN_NAME");// 列名
+            final String columnName = rs.getString("COLUMN_NAME");
             IndexSchema indexSchema;
             if (!indexColumns.containsKey(indexName)) {
                 indexSchema = new IndexSchema();
@@ -96,27 +50,19 @@ public class DatabaseSchemaLoader {
                 indexSchema.setUnique(!rs.getBoolean("NON_UNIQUE"));
                 indexSchema.setType(rs.getShort("TYPE"));
                 indexSchema.setOrder(rs.getString("ASC_OR_DESC"));
-                List<ColumnSchema> columnSchemas = new ArrayList<>();
-                indexSchema.setMemberColumns(columnSchemas);
+                indexSchema.setMemberColumns(new ArrayList<>());
                 indexSchemas.add(indexSchema);
                 indexColumns.put(indexName, indexSchema);
             } else {
                 indexSchema = indexColumns.get(indexName);
             }
-            for (final ColumnSchema column : tableSchema.getColumns()) {
-                if (columnName.equalsIgnoreCase(column.getColumnName())) {
-                    indexSchema.getMemberColumns().add(column);
-                    break;
-                }
+            ColumnSchema column = columnByName.get(columnName.toUpperCase());
+            if (column != null) {
+                indexSchema.getMemberColumns().add(column);
             }
         }
     }
 
-    /**
-     * 关闭数据库连接.
-     *
-     * @param connection the connection
-     */
     private static void closeConnection(Connection connection) {
         try {
             if (connection != null && !connection.isClosed()) {
@@ -127,119 +73,96 @@ public class DatabaseSchemaLoader {
         }
     }
 
-    /**
-     * Gets the columns.
-     *
-     * @param tableSchema the table schema
-     * @return the columns
-     * @throws SQLException the SQL exception
-     */
     private static List<ColumnSchema> getColumns(Connection connection,
-                                                 String catalog,
-                                                 String schema,
-                                                 TableSchema tableSchema,
-                                                 boolean loadFromDb) throws SQLException {
+                                                  String catalog,
+                                                  String schema,
+                                                  TableSchema tableSchema,
+                                                  Map<String, Map<String, Object>> columnDefs) throws SQLException {
         final DatabaseMetaData databaseMetaData = connection.getMetaData();
-
-        final ResultSet rs = databaseMetaData.getColumns(
-                catalog,
-                schema,
-                tableSchema.getTableName(), "%");
         final List<ColumnSchema> columnSchemas = new ArrayList<>();
 
-        Map<String, Map<String, Object>> columns = loadFromDb ? getColumnDefFromDB(connection, tableSchema) : Collections.emptyMap();
+        try (ResultSet rs = databaseMetaData.getColumns(catalog, schema, tableSchema.getTableName(), "%")) {
+            while (rs.next()) {
+                final String columnName = rs.getString("COLUMN_NAME");
+                final int dataType = rs.getInt("DATA_TYPE");
+                final String rawTypeName = rs.getString("TYPE_NAME");
+                String dataTypeName = rawTypeName.split("\\s")[0];
 
-        while (rs.next()) {
-            // String tableCat = rs.getString("TABLE_CAT");// 表目录（可能为空）
-            // String tableSchemaName = rs.getString("TABLE_SCHEM");//
-            // 表的架构（可能为空）
-            // String tableName_ = rs.getString("TABLE_NAME");// 表名
-            final String columnName = rs.getString("COLUMN_NAME");// 列名
-            final int dataType = rs.getInt("DATA_TYPE"); // 对应的java.sql.Types类型
-            String dataTypeName = rs.getString("TYPE_NAME");// java.sql.Types类型
-            String[] parts = dataTypeName.split("\\s");
-            dataTypeName = parts[0];
+                final int columnSize = rs.getInt("COLUMN_SIZE");
+                final int decimalDigits = rs.getInt("DECIMAL_DIGITS");
+                final int nullAble = rs.getInt("NULLABLE");
+                final String remarks = rs.getString("REMARKS");
+                final String defaultValue = rs.getString("COLUMN_DEF");
+                final String isAutoincrement = rs.getString("IS_AUTOINCREMENT");
 
-            final int columnSize = rs.getInt("COLUMN_SIZE");// 列大小
-            final int decimalDigits = rs.getInt("DECIMAL_DIGITS");// 小数位数
-            final int nullAble = rs.getInt("NULLABLE");// 是否允许为null
-            // String isNullable = rs.getString("IS_NULLABLE");
-            final String remarks = rs.getString("REMARKS");// 列描述
-            final String defaultValue = rs.getString("COLUMN_DEF");// 默认值
-            // int sqlDataType = rs.getInt("SQL_DATA_TYPE");// sql数据类型
-
-            final String isAutoincrement = rs.getString("IS_AUTOINCREMENT");
-
-
-            // String isGeneratedColumn =
-            // rs.getString("IS_GENERATEDCOLUMN");
-
-            final ColumnSchema columnSchema = new ColumnSchema();
-            columnSchema.setTableSchema(tableSchema);
-            columnSchema.setColumnName(columnName);
-            columnSchema.setRemarks(remarks);
-            columnSchema.setColumnSize(columnSize);
-            columnSchema.setDataType(dataType);
-            columnSchema.setDataTypeName(dataTypeName);
-            columnSchema.setAutoIncrement(isAutoincrement.equalsIgnoreCase("YES"));
-            columnSchema.setDecimalDigits(decimalDigits);
-            columnSchema.setDefaultValue(defaultValue);
-            columnSchema.setNullable(nullAble == 1);
-            String type_name = rs.getString("TYPE_NAME");
-            if (type_name != null && type_name.contains("UNSIGNED")) {
-                columnSchema.setUnsigned(true);
+                final ColumnSchema columnSchema = new ColumnSchema();
+                columnSchema.setTableSchema(tableSchema);
+                columnSchema.setColumnName(columnName);
+                columnSchema.setRemarks(remarks);
+                columnSchema.setColumnSize(columnSize);
+                columnSchema.setDataType(dataType);
+                columnSchema.setDataTypeName(dataTypeName);
+                columnSchema.setAutoIncrement("YES".equalsIgnoreCase(isAutoincrement));
+                columnSchema.setDecimalDigits(decimalDigits);
+                columnSchema.setDefaultValue(defaultValue);
+                columnSchema.setNullable(nullAble == 1);
+                if (rawTypeName.contains("UNSIGNED")) {
+                    columnSchema.setUnsigned(true);
+                }
+                if (!columnDefs.isEmpty()) {
+                    Map<String, Object> colDef = columnDefs.get(columnName);
+                    if (colDef != null) {
+                        columnSchema.setCharacterSet((String) colDef.get("CHARACTER_SET_NAME"));
+                        columnSchema.setCollation((String) colDef.get("COLLATION_NAME"));
+                    }
+                }
+                columnSchemas.add(columnSchema);
             }
-            if (!columns.isEmpty()) {
-                Map<String, Object> column = columns.get(columnName);
-                String characterSet = (String) column.get("CHARACTER_SET_NAME");
-                String collation = (String) column.get("COLLATION_NAME");
-                columnSchema.setCharacterSet(characterSet);
-                columnSchema.setCollation(collation);
-            }
-            columnSchemas.add(columnSchema);
         }
         return columnSchemas;
     }
 
     private static Map<String, Map<String, Object>> getTableDefFromDB(Connection connection, String catalog) {
         Map<String, Map<String, Object>> tableDef = new HashMap<>();
-        try {
-            String sql = "SELECT * from information_schema.`TABLES` s  where s.table_schema=? ";
-            PreparedStatement preparedStatement = connection.prepareStatement(sql);
-            preparedStatement.setString(1, catalog);
-            ResultSet resultSet = preparedStatement.executeQuery();
-            while (resultSet.next()) {
-                Map<String, Object> table = new HashMap<>();
-                table.put("TABLE_COLLATION", resultSet.getString("TABLE_COLLATION"));
-                tableDef.put(resultSet.getString("TABLE_NAME"), table);
+        String sql = "SELECT * from information_schema.`TABLES` s where s.table_schema=?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, catalog);
+            try (ResultSet resultSet = ps.executeQuery()) {
+                while (resultSet.next()) {
+                    Map<String, Object> table = new HashMap<>();
+                    table.put("TABLE_COLLATION", resultSet.getString("TABLE_COLLATION"));
+                    tableDef.put(resultSet.getString("TABLE_NAME"), table);
+                }
             }
-            return tableDef;
-        } catch (Exception ignore) {
-
+        } catch (Exception ex) {
+            log.warn("Failed to load table definitions from information_schema", ex);
         }
         return tableDef;
     }
 
-    private static Map<String, Map<String, Object>> getColumnDefFromDB(Connection connection,
-                                                                       TableSchema tableSchema) {
-        Map<String, Map<String, Object>> columns = new HashMap<>();
-        try {
-            String sql = "SELECT COLUMN_NAME,CHARACTER_SET_NAME,COLLATION_NAME from information_schema.COLUMNS s where s.table_schema=? and s.TABLE_NAME=?";
-            PreparedStatement preparedStatement = connection.prepareStatement(sql);
-            preparedStatement.setString(1, tableSchema.getTableCatalog());
-            preparedStatement.setString(2, tableSchema.getTableName());
-            ResultSet resultSet = preparedStatement.executeQuery();
-            while (resultSet.next()) {
-                Map<String, Object> column = new HashMap<>();
-                column.put("CHARACTER_SET_NAME", resultSet.getString("CHARACTER_SET_NAME"));
-                column.put("COLLATION_NAME", resultSet.getString("COLLATION_NAME"));
-                columns.put(resultSet.getString("COLUMN_NAME"), column);
+    /**
+     * 一次查询加载整个 catalog 的所有列字符集/排序规则信息.
+     * 返回结构: tableName -> columnName -> {CHARACTER_SET_NAME, COLLATION_NAME}
+     */
+    private static Map<String, Map<String, Map<String, Object>>> getAllColumnDefsFromDB(Connection connection, String catalog) {
+        Map<String, Map<String, Map<String, Object>>> result = new HashMap<>();
+        String sql = "SELECT TABLE_NAME,COLUMN_NAME,CHARACTER_SET_NAME,COLLATION_NAME from information_schema.COLUMNS where TABLE_SCHEMA=?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, catalog);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String tableName = rs.getString("TABLE_NAME");
+                    String columnName = rs.getString("COLUMN_NAME");
+                    Map<String, Object> colDef = new HashMap<>(2);
+                    colDef.put("CHARACTER_SET_NAME", rs.getString("CHARACTER_SET_NAME"));
+                    colDef.put("COLLATION_NAME", rs.getString("COLLATION_NAME"));
+                    result.computeIfAbsent(tableName, k -> new HashMap<>()).put(columnName, colDef);
+                }
             }
-            return columns;
-        } catch (Exception ignore) {
-
+        } catch (Exception ex) {
+            log.warn("Failed to load column definitions from information_schema", ex);
         }
-        return columns;
+        return result;
     }
 
     @SneakyThrows
@@ -271,38 +194,33 @@ public class DatabaseSchemaLoader {
         return load(connection, tablePrefix, false);
     }
 
-
-    /**
-     * 获取主键.
-     *
-     * @param tableSchema the table schema
-     * @return the primary key
-     * @throws SQLException the SQL exception
-     */
     private static KeySchema getPrimaryKey(Connection connection,
                                            String catalog,
                                            String schema,
                                            TableSchema tableSchema) throws Exception {
         final DatabaseMetaData databaseMetaData = connection.getMetaData();
-        final ResultSet rs = databaseMetaData.getPrimaryKeys(catalog, schema, tableSchema.getTableName());
         final KeySchema keySchema = new KeySchema();
         final List<ColumnSchema> memberColumns = new ArrayList<>();
         keySchema.setMemberColumns(memberColumns);
-        while (rs.next()) {
-            final String columnName = rs.getString("COLUMN_NAME");// 列名
-            for (final ColumnSchema column : tableSchema.getColumns()) {
-                if (columnName.equalsIgnoreCase(column.getColumnName())) {
+
+        Map<String, ColumnSchema> columnByName = new HashMap<>();
+        for (ColumnSchema col : tableSchema.getColumns()) {
+            columnByName.put(col.getColumnName().toUpperCase(), col);
+        }
+
+        try (ResultSet rs = databaseMetaData.getPrimaryKeys(catalog, schema, tableSchema.getTableName())) {
+            while (rs.next()) {
+                final String columnName = rs.getString("COLUMN_NAME");
+                ColumnSchema column = columnByName.get(columnName.toUpperCase());
+                if (column != null) {
                     column.setPrimary(true);
                     tableSchema.setPrimaryColumn(column);
                     memberColumns.add(column);
-                    break;
                 }
+                keySchema.setKeyName(rs.getString("PK_NAME"));
             }
-            final String keyName = rs.getString("PK_NAME"); // 对应的java.sql.Types类型
-            keySchema.setKeyName(keyName);
         }
         return keySchema;
-
     }
 
     @SneakyThrows
@@ -317,7 +235,6 @@ public class DatabaseSchemaLoader {
         Connection connection = null;
         try {
             connection = getConnection(driverClassName, jdbcUrl, userName, password);
-
             return load(connection, catalog, schema, tablePrefix, loadFromDb);
         } finally {
             closeConnection(connection);
@@ -336,7 +253,6 @@ public class DatabaseSchemaLoader {
             try {
                 schema = connection.getSchema();
             } catch (Exception ignore) {
-
             }
         }
         if (Utils.isEmpty(schema)) {
@@ -345,29 +261,39 @@ public class DatabaseSchemaLoader {
 
         DatabaseSchema databaseSchema = new DatabaseSchema();
         final DatabaseMetaData databaseMetaData = connection.getMetaData();
-        databaseMetaData.getSchemaTerm();
         final String[] types = {"table", "view"};
-        final ResultSet rs = databaseMetaData.getTables(catalog, schema, null, types);
         final List<TableSchema> tableSchemas = new ArrayList<>();
-        Map<String, Map<String, Object>> tables = loadFromDb ? getTableDefFromDB(connection, catalog) : Collections.emptyMap();
-        while (rs.next()) {
-            final TableSchema tableSchema = new TableSchema(tablePrefix);
-            tableSchema.setTableCatalog(rs.getString("TABLE_CAT"));
-            tableSchema.setTableName(rs.getString("TABLE_NAME"));
-            tableSchema.setComment(rs.getString("REMARKS"));
-            final List<ColumnSchema> columnSchemas = getColumns(connection, catalog, schema, tableSchema, loadFromDb);
-            tableSchema.setColumns(columnSchemas);
-            tableSchema.setIndexes(getIndexes(connection, catalog, schema, tableSchema));
-            tableSchema.setPrimaryKey(getPrimaryKey(connection, catalog, schema, tableSchema));
-            tableSchema.setView(rs.getString(4).equals("VIEW"));
-            if (tableSchema.isTable() && !tables.isEmpty()) {
-                Map<String, Object> stringObjectMap = tables.get(tableSchema.getTableName());
-                String table_collation = (String) stringObjectMap.get("TABLE_COLLATION");
-                tableSchema.setCollation(table_collation);
+
+        // 批量预加载: 1 条 SQL 获取所有表定义, 1 条 SQL 获取所有列字符集 (代替 N+1 查询)
+        Map<String, Map<String, Object>> tableDefs = loadFromDb ? getTableDefFromDB(connection, catalog) : Collections.emptyMap();
+        Map<String, Map<String, Map<String, Object>>> allColumnDefs = loadFromDb ? getAllColumnDefsFromDB(connection, catalog) : Collections.emptyMap();
+        Map<String, String> tableComments = getTableComments(connection, catalog);
+
+        try (ResultSet rs = databaseMetaData.getTables(catalog, schema, null, types)) {
+            while (rs.next()) {
+                final TableSchema tableSchema = new TableSchema(tablePrefix);
+                tableSchema.setTableCatalog(rs.getString("TABLE_CAT"));
+                tableSchema.setTableName(rs.getString("TABLE_NAME"));
+                tableSchema.setComment(rs.getString("REMARKS"));
+                Map<String, Map<String, Object>> columnDefs = allColumnDefs.getOrDefault(tableSchema.getTableName(), Collections.emptyMap());
+                final List<ColumnSchema> columnSchemas = getColumns(connection, catalog, schema, tableSchema, columnDefs);
+                tableSchema.setColumns(columnSchemas);
+                tableSchema.setIndexes(getIndexes(connection, catalog, schema, tableSchema));
+                tableSchema.setPrimaryKey(getPrimaryKey(connection, catalog, schema, tableSchema));
+                tableSchema.setView(rs.getString(4).equals("VIEW"));
+                if (tableSchema.isTable() && !tableDefs.isEmpty()) {
+                    Map<String, Object> td = tableDefs.get(tableSchema.getTableName());
+                    if (td != null) {
+                        tableSchema.setCollation((String) td.get("TABLE_COLLATION"));
+                    }
+                }
+                // 补充 comment (从批量查询结果)
+                if (!Utils.hasText(tableSchema.getComment())) {
+                    tableSchema.setComment(tableComments.getOrDefault(tableSchema.getTableName(), ""));
+                }
+                tableSchemas.add(tableSchema);
             }
-            tableSchemas.add(tableSchema);
         }
-        setComments(connection, tableSchemas);
         databaseSchema.setTables(tableSchemas);
         return databaseSchema;
     }
@@ -378,68 +304,33 @@ public class DatabaseSchemaLoader {
                                             String password) {
         try {
             Class.forName(driverClassName);
-            return DriverManager.getConnection(jdbcUrl,
-                    userName,
-                    password
-            );
+            return DriverManager.getConnection(jdbcUrl, userName, password);
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
     }
 
     /**
-     * Parses the.
-     *
-     * @param all the all
-     * @return the string
+     * 一次查询加载整个 catalog 的所有表注释.
+     * 替代原来的 N 条 SHOW CREATE TABLE 查询.
      */
-    private static String parse(String all) {
-        String comment;
-        final int index = all.indexOf("COMMENT='");
-        if (index < 0) {
-            return EMPTY_STRING;
-        }
-        comment = all.substring(index + 9);
-        comment = comment.substring(0, comment.length() - 1);
-        comment = new String(comment.getBytes(StandardCharsets.UTF_8));
-        return comment;
-    }
-
-    /**
-     * Sets the comments.
-     *
-     * @param connection   the connection
-     * @param tableSchemas the table schemas
-     * @throws SQLException the SQL exception
-     */
-    private static void setComments(Connection connection, List<TableSchema> tableSchemas) throws SQLException {
-        final Statement statement = connection.createStatement();
-        for (final TableSchema tableSchema : tableSchemas) {
-            if (!Utils.hasText(tableSchema.getComment())) {
-                String comment = getComment(statement, tableSchema);
-                tableSchema.setComment(comment);
+    private static Map<String, String> getTableComments(Connection connection, String catalog) {
+        Map<String, String> comments = new HashMap<>();
+        String sql = "SELECT TABLE_NAME, TABLE_COMMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA=?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, catalog);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String comment = rs.getString("TABLE_COMMENT");
+                    if (Utils.hasText(comment)) {
+                        comments.put(rs.getString("TABLE_NAME"), comment);
+                    }
+                }
             }
-        }
-    }
-
-    private static String getComment(Statement statement, TableSchema tableSchema) {
-        try {
-            String comment = "";
-            final ResultSet rs = statement.executeQuery("SHOW CREATE TABLE " + tableSchema.getTableName());
-            if (rs != null && rs.next()) {
-                final String create = rs.getString(2);
-                comment = parse(create);
-                rs.close();
-            }
-            return comment;
         } catch (Exception ex) {
-            return "";
+            log.warn("Failed to load table comments from information_schema", ex);
         }
-
+        return comments;
     }
 
-
-    public DatabaseSchema loadSchema() {
-        return load(driverClassName, jdbcUrl, userName, password, tablePrefix);
-    }
 }

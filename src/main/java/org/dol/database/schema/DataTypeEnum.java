@@ -1,9 +1,11 @@
 package org.dol.database.schema;
 
+import lombok.Getter;
+
 import java.util.HashMap;
 import java.util.Map;
 
-
+@Getter
 public enum DataTypeEnum {
 
     /**
@@ -153,6 +155,24 @@ public enum DataTypeEnum {
      * The bit.
      */
     BIT("BIT", -7, "BIT", "Boolean", "bool", "java.lang.Boolean"),
+
+    // DECIMAL alias
+    NUMERIC("NUMERIC", 3, "DECIMAL", "BigDecimal", "double", "java.math.BigDecimal"),
+
+    // String-like types
+    ENUM("ENUM", 1, "CHAR", "String", "string", "java.lang.String"),
+    SET("SET", 1, "CHAR", "String", "string", "java.lang.String"),
+    JSON("JSON", -1, "LONGVARCHAR", "String", "string", "java.lang.String"),
+
+    // Spatial types
+    GEOMETRY("GEOMETRY", -2, "BINARY", "byte[]", "byte[]", "java.lang.Byte"),
+    POINT("POINT", -2, "BINARY", "byte[]", "byte[]", "java.lang.Byte"),
+    LINESTRING("LINESTRING", -2, "BINARY", "byte[]", "byte[]", "java.lang.Byte"),
+    POLYGON("POLYGON", -2, "BINARY", "byte[]", "byte[]", "java.lang.Byte"),
+    MULTIPOINT("MULTIPOINT", -2, "BINARY", "byte[]", "byte[]", "java.lang.Byte"),
+    MULTILINESTRING("MULTILINESTRING", -2, "BINARY", "byte[]", "byte[]", "java.lang.Byte"),
+    MULTIPOLYGON("MULTIPOLYGON", -2, "BINARY", "byte[]", "byte[]", "java.lang.Byte"),
+    GEOMETRYCOLLECTION("GEOMETRYCOLLECTION", -2, "BINARY", "byte[]", "byte[]", "java.lang.Byte"),
     ;
     // TEXT(0, "VARCHAR", "String", "java.lang.String"),
 
@@ -168,29 +188,12 @@ public enum DataTypeEnum {
         }
     }
 
-    /**
-     * The data type name.
-     */
-    private String dataTypeName;
-    /**
-     * The data type.
-     */
-    private int    dataType;
-    /**
-     * The jdbc type.
-     */
-    private String jdbcType;
-    /**
-     * The java type.
-     */
-    private String javaType;
-
+    private final String dataTypeName;
+    private final int    dataType;
+    private final String jdbcType;
+    private final String javaType;
     private final String csType;
-
-    /**
-     * The full java type.
-     */
-    private String fullJavaType;
+    private final String fullJavaType;
 
     /**
      * Instantiates a new data type enum.
@@ -202,127 +205,23 @@ public enum DataTypeEnum {
      * @param fullJavaType the full java type
      */
     DataTypeEnum(String dataTypeName, int dataType, String jdbcType, String javaType, String csType, String fullJavaType) {
-        setDataTypeName(dataTypeName);
-        setDataType(dataType);
-        setJdbcType(jdbcType);
+        this.dataTypeName = dataTypeName;
+        this.dataType = dataType;
+        this.jdbcType = jdbcType;
         this.javaType = javaType;
         this.csType = csType;
-        setFullJavaType(fullJavaType);
+        this.fullJavaType = fullJavaType;
     }
 
-    /**
-     * 获取数据类型枚举.
-     *
-     * @param dataTypeName the data type name
-     * @return the data type enum
-     */
     public static DataTypeEnum get(String dataTypeName) {
         return KEYED_DATA_TYPE_ENUM.get(dataTypeName.toUpperCase());
     }
 
     /**
-     * Equals.
-     *
-     * @param other the other
-     * @return true, if successful
+     * 判断是否与另一个 DataTypeEnum 具有相同的 JDBC dataType 编码.
      */
-    public boolean equals(DataTypeEnum other) {
+    public boolean sameDataType(DataTypeEnum other) {
         return other != null && dataType == other.dataType;
-
-    }
-
-    /**
-     * Gets the data type.
-     *
-     * @return the data type
-     */
-    public int getDataType() {
-        return dataType;
-    }
-
-    /**
-     * Sets the data type.
-     *
-     * @param dataType the new data type
-     */
-    public void setDataType(int dataType) {
-        this.dataType = dataType;
-    }
-
-    /**
-     * Gets the data type name.
-     *
-     * @return the data type name
-     */
-    public String getDataTypeName() {
-        return dataTypeName;
-    }
-
-    /**
-     * Sets the data type name.
-     *
-     * @param dataTypeName the new data type name
-     */
-    public void setDataTypeName(String dataTypeName) {
-        this.dataTypeName = dataTypeName;
-    }
-
-    /**
-     * Gets the full java type.
-     *
-     * @return the full java type
-     */
-    public String getFullJavaType() {
-        return fullJavaType;
-    }
-
-    /**
-     * Sets the full java type.
-     *
-     * @param fullJavaType the new full java type
-     */
-    public void setFullJavaType(String fullJavaType) {
-        this.fullJavaType = fullJavaType;
-    }
-
-    /**
-     * Gets the java type.
-     *
-     * @return the java type
-     */
-    public String getJavaType() {
-        return javaType;
-    }
-
-    /**
-     * Sets the java type.
-     *
-     * @param javaType the new java type
-     */
-    public void setJavaType(String javaType) {
-        this.javaType = javaType;
-    }
-
-    public String getCsType() {
-        return csType;
-    }
-
-    /**
-     * Gets the jdbc type.
-     *
-     * @return the jdbc type
-     */
-    public String getJdbcType() {
-        return jdbcType;
-    }
-
-    /**
-     * Sets the jdbc type.
-     *
-     * @param jdbcType the new jdbc type
-     */
-    public void setJdbcType(String jdbcType) {
-        this.jdbcType = jdbcType;
     }
 
     /**
@@ -334,22 +233,46 @@ public enum DataTypeEnum {
         return javaType.equalsIgnoreCase(BINARY.getJavaType());
     }
 
-    /**
-     * 参照方法名.
-     *
-     * @return true, if is date
-     */
     public boolean isDate() {
         return javaType.equalsIgnoreCase(DATETIME.javaType);
     }
 
     /**
-     * 参照方法名.
-     *
-     * @return true, if is string
+     * 是否是字符串家族类型 (javaType 为 String).
+     * 注意: JSON、ENUM、SET、TIME、YEAR 也属于此家族.
      */
     public boolean isString() {
         return javaType.equalsIgnoreCase(VARCHAR.javaType);
+    }
+
+    /** 是否是 JSON 类型. */
+    public boolean isJson() {
+        return this == JSON;
+    }
+
+    /** 是否是空间类型 (GEOMETRY, POINT, LINESTRING, POLYGON 等). */
+    public boolean isSpatial() {
+        return this == GEOMETRY || this == POINT || this == LINESTRING || this == POLYGON
+                || this == MULTIPOINT || this == MULTILINESTRING || this == MULTIPOLYGON
+                || this == GEOMETRYCOLLECTION;
+    }
+
+    /** 是否是 ENUM 或 SET 类型. */
+    public boolean isEnumOrSet() {
+        return this == ENUM || this == SET;
+    }
+
+    /** 是否是整数家族 (INT, INTEGER, BIGINT, SMALLINT, TINYINT, MEDIUMINT). */
+    public boolean isIntFamily() {
+        return this == INT || this == INTEGER || this == MEDIUMINT
+                || this == BIGINT || this == SMALLINT || this == TINYINT;
+    }
+
+    /** 是否是数值家族 (整数 + 浮点 + 定点). */
+    public boolean isNumeric() {
+        return isIntFamily()
+                || this == FLOAT || this == DOUBLE || this == REAL
+                || this == DECIMAL || this == NUMERIC;
     }
 
 }

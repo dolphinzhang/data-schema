@@ -1,189 +1,88 @@
 package org.dol.database.schema;
 
 
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
 import org.dol.database.utils.Utils;
 
 import java.util.regex.Matcher;
 
 
+@Getter
+@Setter
 public class ColumnSchema {
 
-    /**
-     * The table schema.
-     */
     private TableSchema tableSchema;
-
-    /**
-     * The column name.
-     */
     private String columnName;
-
-    /**
-     * The column size.
-     */
     private int columnSize;
-
-    /**
-     * The decimal digits.
-     */
     private int decimalDigits;
-
-    /**
-     * The nullable.
-     */
     private boolean nullable;
-
-    /**
-     * The remarks.
-     */
     private String remarks;
-
-    /**
-     * The default value.
-     */
     private String defaultValue;
-
-    /**
-     * The is autoincrement.
-     */
-    private String isAutoincrement;
-
-    /**
-     * The is primary.
-     */
-    private boolean isPrimary = false;
-
-    /**
-     * The is auto increment.
-     */
-    private boolean isAutoIncrement = false;
-
-    /**
-     * The property name.
-     */
+    private boolean isPrimary;
+    private boolean isAutoIncrement;
     private String propertyName;
-
-    /**
-     * The display name.
-     */
     private String displayName;
-
-    /**
-     * The data type.
-     */
-    private int          dataType;
-    private Boolean      unsigned = false;
-    /**
-     * The data type name.
-     */
-    private String       dataTypeName;
-    /**
-     * The jdbc type.
-     */
-    private String       jdbcType;
-    /**
-     * The java type.
-     */
-    private String       javaType;
-    private String       csType;
-    /**
-     * The full java type.
-     */
-    private String       fullJavaType;
-    /**
-     * The property var name.
-     */
-    private String       propertyVarName;
-    /**
-     * The upper property name.
-     */
-    private String       capitalizePropertyName;
-    /**
-     * The data type enum.
-     */
+    private int dataType;
+    private Boolean unsigned = false;
+    private String dataTypeName;
+    private String jdbcType;
+    private String javaType;
+    private String csType;
+    private String fullJavaType;
+    private String propertyVarName;
+    private String capitalizePropertyName;
     private DataTypeEnum dataTypeEnum;
-    /**
-     * The getter.
-     */
-    private String       getter;
-    /**
-     * The setter.
-     */
-    private String       setter;
-    private Boolean      isStatusColumn;
-    private Boolean      isDeletedColumn;
-    private String       csPropertyName;
-    private String       characterSet;
-    private String       collation;
+    private String getter;
+    private String setter;
+    @Getter(AccessLevel.NONE) @Setter(AccessLevel.NONE)
+    private Boolean isStatusColumn;
+    @Getter(AccessLevel.NONE) @Setter(AccessLevel.NONE)
+    private Boolean isDeletedColumn;
+    @Getter(AccessLevel.NONE) @Setter(AccessLevel.NONE)
+    private Boolean cachedCreateTime;
+    @Getter(AccessLevel.NONE) @Setter(AccessLevel.NONE)
+    private Boolean cachedCreateUser;
+    @Getter(AccessLevel.NONE) @Setter(AccessLevel.NONE)
+    private Boolean cachedUpdateTime;
+    @Getter(AccessLevel.NONE) @Setter(AccessLevel.NONE)
+    private Boolean cachedUpdateUser;
+    @Getter(AccessLevel.NONE) @Setter(AccessLevel.NONE)
+    private Boolean cachedDeleteTime;
+    @Getter(AccessLevel.NONE) @Setter(AccessLevel.NONE)
+    private Boolean cachedDeleteUser;
+    @Getter(AccessLevel.NONE) @Setter(AccessLevel.NONE)
+    private Boolean cachedVersion;
+    private String csPropertyName;
+    private String characterSet;
+    private String collation;
 
-    public String getCharacterSet() {
-        return characterSet;
-    }
-
-    public void setCharacterSet(String characterSet) {
-        this.characterSet = characterSet;
-    }
-
-    public String getCollation() {
-        return collation;
-    }
-
-    public void setCollation(String collation) {
-        this.collation = collation;
-    }
-
-    public Boolean getUnsigned() {
-        return unsigned;
-    }
-
-    public void setUnsigned(Boolean unsigned) {
-        this.unsigned = unsigned;
-    }
-
-    /**
-     * Gets the column length.
-     *
-     * @return the column length
-     */
     public Double getColumnLength() {
-        Double double1 = (double) columnSize;
         if (decimalDigits > 0) {
-            double1 = new Double(columnSize + "." + decimalDigits);
+            return Double.parseDouble(columnSize + "." + decimalDigits);
         }
-        return double1;
+        return (double) columnSize;
     }
 
     /**
-     * Gets the column name.
-     *
-     * @return the column name
-     */
-    public String getColumnName() {
-        return columnName;
-    }
-
-    /**
-     * Sets the column name.
-     *
-     * @param columnName the new column name
+     * 设置列名并自动计算 propertyName、csPropertyName 等派生字段.
      */
     public void setColumnName(String columnName) {
         this.columnName = columnName;
         final String[] columnNameParts = columnName.split("_");
-        final StringBuilder sbJava = new StringBuilder();
-        final StringBuilder sbCS = new StringBuilder();
+        final StringBuilder sb = new StringBuilder();
         for (final String namePart : columnNameParts) {
-            sbJava.append(Utils.capitalize(namePart));
-            sbCS.append(Utils.capitalize(namePart));
+            sb.append(Utils.capitalize(namePart));
         }
-        final String propertyFieldName = Utils.uncapitalize(sbJava.toString());
-        setPropertyName(propertyFieldName);
-        setPropertyVarName(propertyFieldName);
-        this.csPropertyName = sbCS.toString();
+        final String propertyFieldName = Utils.uncapitalize(sb.toString());
+        this.propertyName = propertyFieldName;
+        this.propertyVarName = propertyFieldName;
+        this.csPropertyName = sb.toString();
     }
 
     public String getFieldName() {
-        if (columnName.indexOf("_") > 0) {
+        if (columnName.contains("_")) {
             return columnName.toUpperCase();
         } else {
             return (tableSchema.nameWithoutPrefix() + "_" + columnName).toUpperCase();
@@ -194,29 +93,6 @@ public class ColumnSchema {
         return this.tableSchema.getIdColumn() == this;
     }
 
-    /**
-     * Gets the column size.
-     *
-     * @return the column size
-     */
-    public int getColumnSize() {
-        return columnSize;
-    }
-
-    /**
-     * Sets the column size.
-     *
-     * @param columnSize the new column size
-     */
-    public void setColumnSize(int columnSize) {
-        this.columnSize = columnSize;
-    }
-
-    /**
-     * Gets the c property name.
-     *
-     * @return the c property name
-     */
     public String getCapitalizePropertyName() {
         if (capitalizePropertyName == null) {
             capitalizePropertyName = Utils.capitalize(propertyName);
@@ -225,64 +101,7 @@ public class ColumnSchema {
     }
 
     /**
-     * Sets the c property name.
-     *
-     * @param capitalizePropertyName the new c property name
-     */
-    public void setCapitalizePropertyName(String capitalizePropertyName) {
-        this.capitalizePropertyName = capitalizePropertyName;
-    }
-
-    /**
-     * Gets the data type.
-     *
-     * @return the data type
-     */
-    public int getDataType() {
-        return dataType;
-    }
-
-    /**
-     * Sets the data type.
-     *
-     * @param dataType the new data type
-     */
-    public void setDataType(int dataType) {
-        this.dataType = dataType;
-
-    }
-
-    /**
-     * Gets the data type enum.
-     *
-     * @return the data type enum
-     */
-    public DataTypeEnum getDataTypeEnum() {
-        return dataTypeEnum;
-    }
-
-    /**
-     * Sets the data type enum.
-     *
-     * @param dataTypeEnum the new data type enum
-     */
-    public void setDataTypeEnum(DataTypeEnum dataTypeEnum) {
-        this.dataTypeEnum = dataTypeEnum;
-    }
-
-    /**
-     * Gets the data type name.
-     *
-     * @return the data type name
-     */
-    public String getDataTypeName() {
-        return dataTypeName;
-    }
-
-    /**
-     * Sets the data type name.
-     *
-     * @param dataTypeName the new data type name
+     * 设置数据类型名称并自动解析对应的 Java/C#/JDBC 类型.
      */
     public void setDataTypeName(String dataTypeName) {
         this.dataTypeName = dataTypeName;
@@ -290,53 +109,12 @@ public class ColumnSchema {
         if (dataTypeEnum == null) {
             return;
         }
-        setJdbcType(dataTypeEnum.getJdbcType());
-        setJavaType(dataTypeEnum.getJavaType());
-        setCsType(dataTypeEnum.getCsType());
-        setFullJavaType(dataTypeEnum.getFullJavaType());
+        this.jdbcType = dataTypeEnum.getJdbcType();
+        this.javaType = dataTypeEnum.getJavaType();
+        this.csType = dataTypeEnum.getCsType();
+        this.fullJavaType = dataTypeEnum.getFullJavaType();
     }
 
-    /**
-     * Gets the decimal digits.
-     *
-     * @return the decimal digits
-     */
-    public int getDecimalDigits() {
-        return decimalDigits;
-    }
-
-    /**
-     * Sets the decimal digits.
-     *
-     * @param decimalDigits the new decimal digits
-     */
-    public void setDecimalDigits(int decimalDigits) {
-        this.decimalDigits = decimalDigits;
-    }
-
-    /**
-     * Gets the default value.
-     *
-     * @return the default value
-     */
-    public String getDefaultValue() {
-        return defaultValue;
-    }
-
-    /**
-     * Sets the default value.
-     *
-     * @param defaultValue the new default value
-     */
-    public void setDefaultValue(String defaultValue) {
-        this.defaultValue = defaultValue;
-    }
-
-    /**
-     * Gets the display name.
-     *
-     * @return the display name
-     */
     public String getDisplayName() {
         if (displayName != null) {
             return displayName;
@@ -350,251 +128,38 @@ public class ColumnSchema {
         } else {
             displayName = propertyName;
         }
-
         return displayName;
     }
 
-    /**
-     * Sets the display name.
-     *
-     * @param displayName the new display name
-     */
-    public void setDisplayName(String displayName) {
-        this.displayName = displayName;
-    }
-
-    /**
-     * Gets the easy UI class for edit.
-     *
-     * @return the easy UI class for edit
-     */
+    /** @deprecated Use {@link org.dol.database.utils.ColumnUIHelper#getEasyUIClassForEdit(ColumnSchema)} */
     public String getEasyUIClassForEdit() {
-
-        if (notEditable()) {
-            return "easyui-textbox";
-        }
-
-        if (isStringColumn()) {
-            if (isNotNull()
-                    || columnName.toLowerCase().endsWith("email")
-                    || columnName.toLowerCase().endsWith("url")) {
-                return "easyui-textbox";
-            }
-        } else if (isInteger()) {
-            if (columnName.toLowerCase().endsWith("_time")) {
-                return "easyui-datetimebox";
-            } else {
-                return "easyui-numberbox";
-            }
-        }
-        return "easyui-textbox";
+        return org.dol.database.utils.ColumnUIHelper.getEasyUIClassForEdit(this);
     }
 
-    /**
-     * Gets the easy UI class for search.
-     *
-     * @return the easy UI class for search
-     */
+    /** @deprecated Use {@link org.dol.database.utils.ColumnUIHelper#getEasyUIClassForSearch(ColumnSchema)} */
     public String getEasyUIClassForSearch() {
-        if (isInteger()) {
-            if (columnName.toLowerCase().endsWith("_time")) {
-                return "easyui-datetimebox";
-            }
-        }
-        return "easyui-textbox";
+        return org.dol.database.utils.ColumnUIHelper.getEasyUIClassForSearch(this);
     }
 
-    /**
-     * Gets the easy UI input option for edit.
-     *
-     * @return the easy UI input option for edit
-     */
+    /** @deprecated Use {@link org.dol.database.utils.ColumnUIHelper#getEasyUIInputOptionForEdit(ColumnSchema)} */
     public String getEasyUIInputOptionForEdit() {
-        if (notEditable()) {
-            return "";
-        }
-
-        final StringBuilder sbBuilder = new StringBuilder();
-        if (isStringColumn()) {
-            if (isNotNull()) {
-                sbBuilder.append("required:true,");
-            }
-            if (propertyName.toLowerCase().endsWith("url")) {
-                sbBuilder.append("validType:['url','length[0,").append(columnSize).append("]'],");
-            } else if (propertyName.toLowerCase().endsWith("email")) {
-                sbBuilder.append("validType:['email','length[0,").append(columnSize).append("]'],");
-            } else {
-                sbBuilder.append("validType:['length[0,").append(columnSize).append("]'],");
-            }
-        }
-        if (sbBuilder.length() > 0) {
-            final String options = sbBuilder.substring(0, sbBuilder.length() - 1);
-            return "data-options=\"" + options + "\" ";
-        }
-        return "";
+        return org.dol.database.utils.ColumnUIHelper.getEasyUIInputOptionForEdit(this);
     }
 
     /**
-     * Gets the full java type.
-     *
-     * @return the full java type
-     */
-    public String getFullJavaType() {
-        return fullJavaType;
-    }
-
-    /**
-     * Sets the full java type.
-     *
-     * @param fullJavaType the new full java type
-     */
-    public void setFullJavaType(String fullJavaType) {
-        this.fullJavaType = fullJavaType;
-    }
-
-    /**
-     * 获取Getter名称.
-     *
-     * @return the getter
+     * 获取 Getter 名称. 布尔类型以 is 开头的属性返回原名, 否则返回 getXxx.
      */
     public String getGetter() {
         if (getter == null) {
-            if (isBooleanColumn()) {
-                if (propertyName.startsWith("is")) {
-                    getter = propertyName;
-                }
+            if (isBooleanColumn() && propertyName.startsWith("is")) {
+                getter = propertyName;
+            } else {
+                getter = "get" + Utils.capitalize(propertyName);
             }
-            getter = "get" + Utils.capitalize(propertyName);
         }
         return getter;
     }
 
-    /**
-     * Sets the getter.
-     *
-     * @param getterName the new getter
-     */
-    public void setGetter(String getterName) {
-        getter = getterName;
-    }
-
-    /**
-     * Gets the checks if is autoincrement.
-     *
-     * @return the checks if is autoincrement
-     */
-    public String getIsAutoincrement() {
-        return isAutoincrement;
-    }
-
-    /**
-     * Sets the checks if is autoincrement.
-     *
-     * @param isAutoincrement the new checks if is autoincrement
-     */
-    public void setIsAutoincrement(String isAutoincrement) {
-        this.isAutoincrement = isAutoincrement;
-    }
-
-    /**
-     * Gets the java type.
-     *
-     * @return the java type
-     */
-    public String getJavaType() {
-        return javaType;
-    }
-
-    /**
-     * Sets the java type.
-     *
-     * @param javaType the new java type
-     */
-    public void setJavaType(String javaType) {
-        this.javaType = javaType;
-    }
-
-    /**
-     * Gets the jdbc type.
-     *
-     * @return the jdbc type
-     */
-    public String getJdbcType() {
-        return jdbcType;
-    }
-
-    /**
-     * Sets the jdbc type.
-     *
-     * @param jdbcType the new jdbc type
-     */
-    public void setJdbcType(String jdbcType) {
-        this.jdbcType = jdbcType;
-    }
-
-    /**
-     * Gets the property name.
-     *
-     * @return the property name
-     */
-    public String getPropertyName() {
-        return propertyName;
-    }
-
-    /**
-     * Sets the property name.
-     *
-     * @param propertyName the new property name
-     */
-    public void setPropertyName(String propertyName) {
-        this.propertyName = propertyName;
-    }
-
-    public String getCsPropertyName() {
-        return csPropertyName;
-    }
-
-    /**
-     * Gets the property var name.
-     *
-     * @return the property var name
-     */
-    public String getPropertyVarName() {
-        return propertyVarName;
-    }
-
-    /**
-     * Sets the property var name.
-     *
-     * @param propertyVarName the new property var name
-     */
-    public void setPropertyVarName(String propertyVarName) {
-        this.propertyVarName = propertyVarName;
-    }
-
-    /**
-     * Gets the remarks.
-     *
-     * @return the remarks
-     */
-    public String getRemarks() {
-        return remarks;
-    }
-
-    /**
-     * Sets the remarks.
-     *
-     * @param remarks the new remarks
-     */
-    public void setRemarks(String remarks) {
-        this.remarks = remarks;
-    }
-
-    /**
-     * Gets the setter.
-     *
-     * @return the setter
-     */
     public String getSetter() {
         if (setter == null) {
             setter = "set" + Utils.capitalize(propertyName);
@@ -602,169 +167,75 @@ public class ColumnSchema {
         return setter;
     }
 
-    /**
-     * Sets the setter.
-     *
-     * @param setter the new setter
-     */
-    public void setSetter(String setter) {
-        this.setter = setter;
-    }
-
-    /**
-     * Gets the table schema.
-     *
-     * @return the table schema
-     */
-    public TableSchema getTableSchema() {
-        return tableSchema;
-    }
-
-    /**
-     * Sets the table schema.
-     *
-     * @param tableSchema the new table schema
-     */
-    public void setTableSchema(TableSchema tableSchema) {
-        this.tableSchema = tableSchema;
-    }
-
-    /**
-     * 获取测试值.
-     *
-     * @return the test value
-     */
     public String getTestValue() {
-
         if (dataTypeEnum == DataTypeEnum.YEAR) {
             return "\"2017\"";
         }
-
         if (dataTypeEnum == DataTypeEnum.TIME) {
             return "\"12:12:12\"";
         }
-
         if (isStringColumn()) {
             return "\"test string\"";
         }
-
-        if (DataTypeEnum.BIGINT.equals(dataTypeEnum)) {
+        if (dataTypeEnum == DataTypeEnum.BIGINT) {
             return propertyName.endsWith("Time") || propertyName.endsWith("Date") ? "System.currentTimeMillis()" : "1L";
         }
-
         if (isIntColumn()) {
             int now = (int) (System.currentTimeMillis() / 1000);
-            return propertyName.endsWith("Time") || propertyName.endsWith("Date") ? "" + now + "" : "1";
+            return propertyName.endsWith("Time") || propertyName.endsWith("Date") ? "" + now : "1";
         }
-
         if (isShortColumn()) {
             return "(short) 10";
         }
-
         if (isByteColumn()) {
             return "(byte)1";
         }
         if (isByteArrayColumn()) {
             return "new byte[]{1,2,3}";
         }
-        if (DataTypeEnum.DECIMAL.equals(dataTypeEnum)) {
+        if (dataTypeEnum == DataTypeEnum.DECIMAL) {
             return "new BigDecimal(10.01)";
         }
-
-        if (DataTypeEnum.DOUBLE.equals(dataTypeEnum)) {
+        if (dataTypeEnum == DataTypeEnum.DOUBLE) {
             return "10.01d";
         }
-
-        if (DataTypeEnum.FLOAT.equals(dataTypeEnum)) {
+        if (dataTypeEnum == DataTypeEnum.FLOAT) {
             return "10.01f";
         }
-
         if (isDateColumn()) {
             return "new Date()";
         }
-
-        if (DataTypeEnum.BIT.equals(dataTypeEnum)) {
+        if (dataTypeEnum == DataTypeEnum.BIT) {
             return "true";
         }
         return "null";
     }
 
-    /**
-     * 获取TH的选项.
-     *
-     * @return the th data options
-     */
+    /** @deprecated Use {@link org.dol.database.utils.ColumnUIHelper#getThDataOptions(ColumnSchema)} */
     public String getThDataOptions() {
-
-        final StringBuilder sbBuilder = new StringBuilder("field:'" + propertyName + "'");
-        if (columnName.endsWith("_time")) {
-            sbBuilder.append(",formatter:dateFormatter");
-        } else if (dataTypeEnum.equals(DataTypeEnum.BIT)) {
-            sbBuilder.append(",formatter:yesnoFormatter");
-        }
-        return sbBuilder.toString();
+        return org.dol.database.utils.ColumnUIHelper.getThDataOptions(this);
     }
 
-    /**
-     * Checks if is auto increment.
-     *
-     * @return true, if is auto increment
-     */
-    public boolean isAutoIncrement() {
-        return isAutoIncrement;
-    }
+    // ========== 类型判断方法 ==========
 
-    /**
-     * Sets the auto increment.
-     *
-     * @param isAutoIncrement the new auto increment
-     */
-    public void setAutoIncrement(boolean isAutoIncrement) {
-        this.isAutoIncrement = isAutoIncrement;
-    }
-
-    /**
-     * 参照方法名.
-     *
-     * @return true, if is boolean column
-     */
     public boolean isBooleanColumn() {
-        return dataTypeEnum.getDataType() == DataTypeEnum.BIT.getDataType();
+        return dataTypeEnum != null && dataTypeEnum.getDataType() == DataTypeEnum.BIT.getDataType();
     }
 
-    /**
-     * 是否是创建时间列.
-     *
-     * @return true, if is creates the time column
-     */
     public boolean isCreateTimeColumn() {
-        for (final String name : SchemaConstraints.CREATE_TIME_COLUMN) {
-            if (name.equalsIgnoreCase(columnName)) {
-                return true;
-            }
+        if (cachedCreateTime == null) {
+            cachedCreateTime = SchemaConstraints.CREATE_TIME_COLUMN.contains(columnName.toUpperCase());
         }
-        return false;
+        return cachedCreateTime;
     }
 
-    /**
-     * 判断是否是创建用户列.
-     *
-     * @return true, if is creates the userid column
-     */
     public boolean isCreateUserColumn() {
-        for (final String name : SchemaConstraints.CREATE_USER_COLUMN) {
-            if (name.equalsIgnoreCase(columnName)) {
-                return true;
-            }
+        if (cachedCreateUser == null) {
+            cachedCreateUser = SchemaConstraints.CREATE_USER_COLUMN.contains(columnName.toUpperCase());
         }
-        return false;
+        return cachedCreateUser;
     }
 
-    /**
-     * Checks if is date column.
-     *
-     * @return true, if is date column
-     */
     public boolean isDateColumn() {
         if (dataTypeEnum == null) {
             return false;
@@ -772,17 +243,10 @@ public class ColumnSchema {
         if (dataTypeEnum.isDate()) {
             return true;
         }
-
-        return (isIntColumn() || DataTypeEnum.BIGINT.equals(dataTypeEnum) || DataTypeEnum.INTEGER.equals(dataTypeEnum))
+        return (isIntColumn() || dataTypeEnum == DataTypeEnum.BIGINT)
                 && (columnName.toUpperCase().endsWith("TIME") || columnName.toUpperCase().endsWith("DATE"));
-
     }
 
-    /**
-     * Checks if is deleted column.
-     *
-     * @return true, if is deleted column
-     */
     public boolean isDeletedColumn() {
         if (isDeletedColumn == null) {
             isDeletedColumn = SchemaConstraints.DELETED_COLUMN.contains(this.columnName.toUpperCase());
@@ -791,14 +255,12 @@ public class ColumnSchema {
     }
 
     public boolean isVersionColumn() {
-        return SchemaConstraints.VERSION_COLUMN.contains(this.columnName.toUpperCase());
+        if (cachedVersion == null) {
+            cachedVersion = SchemaConstraints.VERSION_COLUMN.contains(this.columnName.toUpperCase());
+        }
+        return cachedVersion;
     }
 
-    /**
-     * Checks if is editable.
-     *
-     * @return true, if is editable
-     */
     public boolean notEditable() {
         return isPrimary()
                 || isCreateUserColumn()
@@ -810,56 +272,42 @@ public class ColumnSchema {
                 || isDeletedColumn();
     }
 
-    /**
-     * Checks if is equal where.
-     *
-     * @return true, if is equal where
-     */
     public boolean isEqualWhere() {
-
+        if (dataTypeEnum == null) {
+            return false;
+        }
         boolean typeCheck = isDateColumn()
                 || dataTypeEnum.isByteArray()
-                || dataTypeEnum.equals(DataTypeEnum.DOUBLE)
-                || dataTypeEnum.equals(DataTypeEnum.FLOAT)
-                || dataTypeEnum.equals(DataTypeEnum.DECIMAL)
+                || dataTypeEnum.isSpatial()
+                || dataTypeEnum.isJson()
+                || dataTypeEnum == DataTypeEnum.DOUBLE
+                || dataTypeEnum == DataTypeEnum.FLOAT
+                || dataTypeEnum == DataTypeEnum.DECIMAL
                 || dataTypeEnum == DataTypeEnum.TEXT
                 || dataTypeEnum == DataTypeEnum.TINYTEXT
                 || (dataTypeEnum.isString() && columnSize > 500);
         return !typeCheck;
     }
 
-    /**
-     * Checks if is integer.
-     *
-     * @return true, if is integer
-     */
     public boolean isInteger() {
         return dataTypeEnum == DataTypeEnum.BIGINT
+                || dataTypeEnum == DataTypeEnum.INT
                 || dataTypeEnum == DataTypeEnum.INTEGER
+                || dataTypeEnum == DataTypeEnum.MEDIUMINT
                 || dataTypeEnum == DataTypeEnum.TINYINT
                 || dataTypeEnum == DataTypeEnum.SMALLINT;
     }
 
-    /**
-     * Checks if is in where.
-     *
-     * @return true, if is in where
-     */
     public boolean isInWhere() {
         return !(isUpdateTimeColumn()
                 || isCreateTimeColumn()
                 || isDateColumn()
-                || isBooleanColumn()) && (isByteColumn() || DataTypeEnum.BIGINT.equals(dataTypeEnum) || isIntColumn() || isBooleanColumn() || isCharOrVarcharColumn() && columnSize < 51);
+                || isBooleanColumn())
+                && (isByteColumn() || dataTypeEnum == DataTypeEnum.BIGINT || isIntColumn()
+                || isCharOrVarcharColumn() && columnSize < 51);
     }
 
-
-    /**
-     * Checks if is like where.
-     *
-     * @return true, if is like where
-     */
     public boolean isLikeWhere() {
-
         return isCharOrVarcharColumn()
                 && columnSize < 129
                 && !(isUpdateTimeColumn()
@@ -880,86 +328,31 @@ public class ColumnSchema {
                 || isDeleteUserColumn());
     }
 
-    /**
-     * Checks if is need validate.
-     *
-     * @return true, if is need validate
-     */
     public boolean isNeedValidate() {
         return isInteger() || isNotNull() || isNumber();
     }
 
-    /**
-     * Checks if is not null.
-     *
-     * @return true, if is not null
-     */
     public boolean isNotNull() {
         return !nullable;
     }
 
-    /**
-     * Checks if is nullable.
-     *
-     * @return true, if is nullable
-     */
-    public boolean isNullable() {
-        return nullable;
-    }
-
-    /**
-     * Sets the nullable.
-     *
-     * @param nullable the new nullable
-     */
-    public void setNullable(boolean nullable) {
-        this.nullable = nullable;
-    }
-
-    /**
-     * Checks if is number.
-     *
-     * @return true, if is number
-     */
     public boolean isNumber() {
         return dataTypeEnum == DataTypeEnum.FLOAT
                 || dataTypeEnum == DataTypeEnum.DECIMAL
                 || dataTypeEnum == DataTypeEnum.INT
+                || dataTypeEnum == DataTypeEnum.INTEGER
+                || dataTypeEnum == DataTypeEnum.MEDIUMINT
                 || dataTypeEnum == DataTypeEnum.BIGINT
                 || dataTypeEnum == DataTypeEnum.DOUBLE
                 || dataTypeEnum == DataTypeEnum.SMALLINT
                 || dataTypeEnum == DataTypeEnum.TINYINT;
-
     }
 
-    /**
-     * Checks if is primary.
-     *
-     * @return true, if is primary
-     */
-    public boolean isPrimary() {
-        return isPrimary;
-    }
-
-    /**
-     * Sets the primary.
-     *
-     * @param isPrimary the new primary
-     */
-    public void setPrimary(boolean isPrimary) {
-        this.isPrimary = isPrimary;
-    }
-
-    /**
-     * Checks if is range where.
-     *
-     * @return true, if is range where
-     */
     public boolean isRangeWhere() {
-        if (isDateColumn() || DataTypeEnum.DECIMAL.equals(dataTypeEnum)) {
+        if (isDateColumn() || dataTypeEnum == DataTypeEnum.DECIMAL) {
             return true;
         }
-        if (DataTypeEnum.INTEGER.equals(dataTypeEnum)) {
+        if (dataTypeEnum == DataTypeEnum.INTEGER || dataTypeEnum == DataTypeEnum.INT || dataTypeEnum == DataTypeEnum.MEDIUMINT) {
             return this.columnName.equalsIgnoreCase("to")
                     || this.columnName.equalsIgnoreCase("age")
                     || this.columnName.equalsIgnoreCase("birthday")
@@ -973,170 +366,110 @@ public class ColumnSchema {
                     || this.columnName.startsWith("end_")
                     || this.columnName.startsWith("from_")
                     || this.columnName.startsWith("to_")
-
                     || this.columnName.endsWith("_width")
                     || this.columnName.endsWith("_height")
                     || this.columnName.endsWith("_length")
                     || this.columnName.endsWith("_size")
                     || this.columnName.endsWith("_age")
-                    || this.columnName.endsWith("_birthday")
-                    ;
+                    || this.columnName.endsWith("_birthday");
         }
         return false;
     }
 
-    /**
-     * Checks if is status column.
-     *
-     * @return true, if is status column
-     */
     public boolean isStatusColumn() {
         if (isStatusColumn == null) {
-            isStatusColumn = false;
-            for (String statusName : SchemaConstraints.STATUS_COLUMN) {
-                isStatusColumn = columnName.equalsIgnoreCase(statusName);
-                if (isStatusColumn) {
-                    break;
-                }
-            }
+            isStatusColumn = SchemaConstraints.STATUS_COLUMN.contains(columnName.toUpperCase());
         }
         return isStatusColumn;
     }
 
     public boolean isDeleteTimeColumn() {
-        return SchemaConstraints.DELETE_TIME_COLUMN.stream().anyMatch(c -> c.equalsIgnoreCase(this.columnName));
+        if (cachedDeleteTime == null) {
+            cachedDeleteTime = SchemaConstraints.DELETE_TIME_COLUMN.contains(columnName.toUpperCase());
+        }
+        return cachedDeleteTime;
     }
 
     public boolean isDeleteUserColumn() {
-        return SchemaConstraints.DELETE_USER_COLUMN.stream().anyMatch(c -> c.equalsIgnoreCase(this.columnName));
+        if (cachedDeleteUser == null) {
+            cachedDeleteUser = SchemaConstraints.DELETE_USER_COLUMN.contains(columnName.toUpperCase());
+        }
+        return cachedDeleteUser;
     }
 
     public boolean isCompanyColumn() {
         return columnName.equalsIgnoreCase(SchemaConstraints.COMPANY_ID);
     }
 
-    /**
-     * Checks if is string column.
-     *
-     * @return true, if is string column
-     */
     public boolean isStringColumn() {
-        return dataTypeEnum.isString();
+        return dataTypeEnum != null && dataTypeEnum.isString();
     }
 
-    /**
-     * Checks if is update time column.
-     *
-     * @return true, if is update time column
-     */
     public boolean isUpdateTimeColumn() {
-        for (final String name : SchemaConstraints.UPDATE_TIME_COLUMN) {
-            if (name.equalsIgnoreCase(columnName)) {
-                return true;
-            }
+        if (cachedUpdateTime == null) {
+            cachedUpdateTime = SchemaConstraints.UPDATE_TIME_COLUMN.contains(columnName.toUpperCase());
         }
-        return false;
+        return cachedUpdateTime;
     }
 
-    /**
-     * Checks if is update userid column.
-     *
-     * @return true, if is update userid column
-     */
     public boolean isUpdateUserColumn() {
-        return SchemaConstraints.UPDATE_USER_COLUMN.contains(columnName.toUpperCase());
+        if (cachedUpdateUser == null) {
+            cachedUpdateUser = SchemaConstraints.UPDATE_USER_COLUMN.contains(columnName.toUpperCase());
+        }
+        return cachedUpdateUser;
     }
 
-    /**
-     * 参照方法名.
-     *
-     * @return true, if is byte array column
-     */
     public boolean isByteArrayColumn() {
-        return dataTypeEnum.isByteArray();
+        return dataTypeEnum != null && dataTypeEnum.isByteArray();
     }
 
-    /**
-     * Checks if is byte column.
-     *
-     * @return true, if is byte column
-     */
     public boolean isByteColumn() {
-        return DataTypeEnum.TINYINT.equals(dataTypeEnum);
+        return dataTypeEnum == DataTypeEnum.TINYINT;
     }
 
-    /**
-     * Checks if is char or varchar column.
-     *
-     * @return true, if is char or varchar column
-     */
     public boolean isCharOrVarcharColumn() {
-        return DataTypeEnum.VARCHAR.equals(dataTypeEnum)
-                || DataTypeEnum.CHAR.equals(dataTypeEnum)
-                || DataTypeEnum.NVARCHAR.equals(dataTypeEnum)
-                || DataTypeEnum.NCHAR.equals(dataTypeEnum);
+        return dataTypeEnum == DataTypeEnum.VARCHAR
+                || dataTypeEnum == DataTypeEnum.CHAR
+                || dataTypeEnum == DataTypeEnum.NVARCHAR
+                || dataTypeEnum == DataTypeEnum.NCHAR;
     }
 
-    /**
-     * Checks if is int column.
-     *
-     * @return true, if is int column
-     */
     public boolean isIntColumn() {
-
-        return DataTypeEnum.INTEGER.equals(dataTypeEnum)
-                || DataTypeEnum.MEDIUMINT.equals(dataTypeEnum);
+        return dataTypeEnum == DataTypeEnum.INT
+                || dataTypeEnum == DataTypeEnum.INTEGER
+                || dataTypeEnum == DataTypeEnum.MEDIUMINT;
     }
 
-    /**
-     * 参照方法名.
-     *
-     * @return true, if is short column
-     */
     public boolean isShortColumn() {
-        return DataTypeEnum.SMALLINT.equals(dataTypeEnum);
-    }
-
-
-    public String getDataProvider() {
-        if (isDateColumn()) {
-            return "data-provider=\"datepicker\"";
-        }
-        return "";
-    }
-
-    public String getDataRender() {
-        if (isDateColumn() && (isIntColumn() || isLongColumn())) {
-            return "data-render=\"dateRender\"";
-        }
-        return "";
+        return dataTypeEnum == DataTypeEnum.SMALLINT;
     }
 
     public boolean isLongColumn() {
-        return DataTypeEnum.BIGINT.equals(this.dataTypeEnum);
+        return dataTypeEnum == DataTypeEnum.BIGINT;
     }
 
-    /**
-     * 参照方法名.
-     */
-    public boolean isUrlColumn() {
+    /** @deprecated Use {@link org.dol.database.utils.ColumnUIHelper#getDataProvider(ColumnSchema)} */
+    public String getDataProvider() {
+        return org.dol.database.utils.ColumnUIHelper.getDataProvider(this);
+    }
 
+    /** @deprecated Use {@link org.dol.database.utils.ColumnUIHelper#getDataRender(ColumnSchema)} */
+    public String getDataRender() {
+        return org.dol.database.utils.ColumnUIHelper.getDataRender(this);
+    }
+
+    public boolean isUrlColumn() {
         return isStringColumn()
                 && (this.columnName.toLowerCase().endsWith("url")
                 || this.columnName.toLowerCase().endsWith("website"));
     }
 
-    /**
-     * 参照方法名.
-     */
     public boolean isEmailColumn() {
-        return isStringColumn() && (this.columnName.toLowerCase().endsWith("email"));
+        return isStringColumn() && this.columnName.toLowerCase().endsWith("email");
     }
 
     public boolean isRemarkColumn() {
-        return isStringColumn() && (
-                this.columnName.equalsIgnoreCase("remark")
-        );
+        return isStringColumn() && this.columnName.equalsIgnoreCase("remark");
     }
 
     public String getEnglishName() {
@@ -1155,15 +488,6 @@ public class ColumnSchema {
         return isStringColumn() && this.getColumnName().toUpperCase().endsWith("MOBILE");
     }
 
-
-    public String getCsType() {
-        return csType;
-    }
-
-    public void setCsType(String csType) {
-        this.csType = csType;
-    }
-
     public String getNullCsType() {
         if (isStringColumn() || isByteArrayColumn()) {
             return csType;
@@ -1180,8 +504,7 @@ public class ColumnSchema {
     }
 
     public boolean getMobileColumn() {
-        return isStringColumn() && (this.columnName.toLowerCase().endsWith("mobile")
-        );
+        return isMobileColumn();
     }
 
     public boolean isCreateRequestColumn() {
@@ -1196,7 +519,6 @@ public class ColumnSchema {
                         || this.isCompanyColumn()
                         || this.isDeletedColumn();
         return !notCreateRequestColumn;
-
     }
 
     public boolean isUpdateRequestColumn() {
@@ -1211,7 +533,6 @@ public class ColumnSchema {
                         || this.isCompanyColumn()
                         || this.isDeletedColumn();
         return !notUpdateRequestColumn;
-
     }
 
     public boolean isDeleteColumn() {

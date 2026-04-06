@@ -13,9 +13,9 @@ public class Utils {
     public static final  String STR_DOT             = ".";
     public static final  String EMPTY_STRING        = "";
     public static final  String LETTER_NUMBER_CHAR  = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    public static final  String LETTER_CHAR         = "abcdefghijkllmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    public static final  String LETTER_CHAR         = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     public static final  String NUMBER_CHAR         = "0123456789";
-    private static final String ALL_CHAR            = "ABCDEFGHIJKLMNOPQRSTUVWXYabcdefghijklmnopqrstuvwxy0123456789~!@#$%^&*()_-+=";
+    private static final String ALL_CHAR            = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789~!@#$%^&*()_-+=";
 
     public static boolean hasText(String str) {
         return str != null && str.trim().length() > 0;
@@ -80,19 +80,6 @@ public class Utils {
         parts.add(name.substring(pre));
         return parts;
     }
-
-    public static void main(String[] args) {
-        System.out.println(splitName("user2name"));
-        System.out.println(splitName("userName"));
-        System.out.println(splitName("userANDName"));
-        System.out.println(splitName("userID"));
-        System.out.println(splitName("user2Name"));
-        System.out.println(splitName("user_Name"));
-        System.out.println(splitName("user_name"));
-        System.out.println(splitName("_user_name"));
-        System.out.println(splitName("_user_2_name_A"));
-    }
-
 
     private static String changeFirstCharacterCase(String str, boolean capitalize) {
         if (!hasLength(str)) {
